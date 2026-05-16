@@ -44,7 +44,7 @@ export default function Home() {
               Entrar al Mercado
             </Button>
           </Link>
-          <Link href="/arena">
+          <Link href="/torneos">
             <Button size="lg" variant="secondary" className="w-full sm:w-auto">
               Inscribirse a Torneo
             </Button>

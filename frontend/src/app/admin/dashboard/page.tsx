@@ -57,12 +57,19 @@ export default function AdminDashboard() {
             <p className="text-3xl font-black text-white group-hover:text-brand-yellow transition-colors">Arena</p>
             <p className="text-white/40 text-xs mt-4">Iniciar / Detener subastas</p>
           </div>
+
+          {/* Tarjeta de Torneos */}
+          <div onClick={() => window.location.href = '/admin/tournaments'} className="bg-white/5 border border-white/10 p-6 rounded-xl hover:border-brand-yellow/30 transition-colors cursor-pointer group md:col-span-2 lg:col-span-1">
+            <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">Eventos Competitivos</h3>
+            <p className="text-3xl font-black text-white group-hover:text-brand-yellow transition-colors">Torneos</p>
+            <p className="text-white/40 text-xs mt-4">Crear eventos y autorizar pagos</p>
+          </div>
           
-          {/* Torneos Placeholder */}
-          <div className="bg-white/5 border border-white/10 p-6 rounded-xl opacity-50">
-            <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">Eventos</h3>
-            <p className="text-3xl font-black text-white">Torneos</p>
-            <p className="text-brand-yellow text-xs mt-4">Próximamente</p>
+          {/* Tarjeta de Ventas y POS */}
+          <div onClick={() => window.location.href = '/admin/sales'} className="bg-white/5 border border-white/10 p-6 rounded-xl hover:border-brand-yellow/30 transition-colors cursor-pointer group">
+            <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">Ingresos y POS</h3>
+            <p className="text-3xl font-black text-white group-hover:text-brand-yellow transition-colors">Ventas</p>
+            <p className="text-white/40 text-xs mt-4">Punto de Venta e Historial</p>
           </div>
         </div>
       </div>

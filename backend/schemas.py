@@ -75,3 +75,76 @@ class Bid(BaseModel):
 
     class Config:
         orm_mode = True
+
+# --- TOURNAMENTS ---
+class TournamentBase(BaseModel):
+    name: str
+    date: datetime
+    format: str
+    entry_fee: float
+    max_players: int
+
+class TournamentCreate(TournamentBase):
+    pass
+
+class Tournament(TournamentBase):
+    id: int
+    is_active: bool
+
+    class Config:
+        orm_mode = True
+
+class TournamentRegistrationBase(BaseModel):
+    tournament_id: int
+    payment_method: str
+
+class TournamentRegistrationCreate(TournamentRegistrationBase):
+    pass
+
+class TournamentRegistration(TournamentRegistrationBase):
+    id: int
+    user_id: int
+    status: str
+    timestamp: datetime
+    
+    # Podríamos incluir detalles anidados para facilitar el frontend
+    tournament: Optional[Tournament] = None
+
+    class Config:
+        orm_mode = True
+
+# --- SALES & POS ---
+class SaleItemBase(BaseModel):
+    description: str
+    price: float
+    quantity: int = 1
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+
+class SaleItemCreate(SaleItemBase):
+    pass
+
+class SaleItem(SaleItemBase):
+    id: int
+    sale_id: int
+
+    class Config:
+        orm_mode = True
+
+class SaleBase(BaseModel):
+    total_amount: float
+    payment_method: str
+    sale_type: str
+    user_id: Optional[int] = None
+
+class SaleCreate(SaleBase):
+    items: List[SaleItemCreate]
+
+class Sale(SaleBase):
+    id: int
+    status: str
+    sale_date: datetime
+    items: List[SaleItem] = []
+
+    class Config:
+        orm_mode = True

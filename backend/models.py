@@ -13,6 +13,7 @@ class User(Base):
     role = Column(String, default="player") # admin, player
 
     bids = relationship("Bid", back_populates="user")
+    tournaments = relationship("TournamentRegistration", back_populates="user")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -69,3 +70,55 @@ class Bid(Base):
 
     auction = relationship("Auction", back_populates="bids")
     user = relationship("User", back_populates="bids")
+
+class Tournament(Base):
+    __tablename__ = "tournaments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    date = Column(DateTime)
+    format = Column(String) # e.g. "Standard", "Modern", "Draft"
+    entry_fee = Column(Float)
+    max_players = Column(Integer)
+    is_active = Column(Boolean, default=True)
+
+    registrations = relationship("TournamentRegistration", back_populates="tournament")
+
+class TournamentRegistration(Base):
+    __tablename__ = "tournament_registrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tournament_id = Column(Integer, ForeignKey("tournaments.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    payment_method = Column(String) # "Tarjeta", "SINPE", "Efectivo"
+    status = Column(String, default="Pendiente") # "Pendiente", "Confirmado"
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    tournament = relationship("Tournament", back_populates="registrations")
+    user = relationship("User", back_populates="tournaments")
+
+class Sale(Base):
+    __tablename__ = "sales"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Para ventas ligadas a usuarios
+    total_amount = Column(Float)
+    payment_method = Column(String) # "Efectivo", "Tarjeta", "SINPE"
+    status = Column(String, default="Completado") # "Completado", "Cancelado"
+    sale_type = Column(String) # "POS", "Torneo", "Subasta"
+    sale_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    items = relationship("SaleItem", back_populates="sale")
+
+class SaleItem(Base):
+    __tablename__ = "sale_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sale_id = Column(Integer, ForeignKey("sales.id"))
+    description = Column(String)
+    price = Column(Float)
+    quantity = Column(Integer, default=1)
+    reference_type = Column(String, nullable=True) # "Producto", "Torneo", "Subasta"
+    reference_id = Column(Integer, nullable=True)
+
+    sale = relationship("Sale", back_populates="items")
