@@ -24,11 +24,16 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <div className="group relative bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-brand-yellow/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,222,0,0.15)] flex flex-col h-full">
-      {/* Etiqueta Condición */}
+      {/* Etiqueta Condición y Categoría */}
       <div className="absolute top-3 left-3 z-10 flex gap-2">
         <span className="bg-brand-blue/80 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded border border-white/20 uppercase tracking-wider">
           {product.condition}
         </span>
+        {product.category && (
+          <span className="bg-purple-600/80 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded border border-white/20 uppercase tracking-wider">
+            {product.category.name}
+          </span>
+        )}
         {product.is_foil && (
           <span className="bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-500 text-brand-blue text-xs font-black px-2 py-1 rounded uppercase tracking-wider shadow-sm">
             Foil

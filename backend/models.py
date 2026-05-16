@@ -29,6 +29,7 @@ class Product(Base):
     name = Column(String, index=True)
     description = Column(Text)
     price = Column(Float)
+    purchase_price = Column(Float, default=0.0)
     stock = Column(Integer, default=0)
     
     # Campos Específicos TCG
@@ -49,6 +50,7 @@ class Auction(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"))
     start_price = Column(Float)
+    start_time = Column(DateTime)
     current_price = Column(Float)
     end_time = Column(DateTime)
     is_active = Column(Boolean, default=True)

@@ -43,12 +43,16 @@ export const Header = () => {
         {/* Actions (Desktop) & Hamburger (Mobile) */}
         <div className="flex items-center gap-3">
           <div className="hidden lg:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Registrarse
-            </Button>
-            <Button variant="primary" size="sm">
-              Jugar Ahora
-            </Button>
+            <Link href="/login">
+              <Button variant="ghost" size="sm">
+                Registrarse
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="primary" size="sm">
+                Jugar Ahora
+              </Button>
+            </Link>
           </div>
           
           {/* Mobile Menu Button */}
@@ -86,12 +90,16 @@ export const Header = () => {
           </nav>
           
           <div className="flex flex-col items-center gap-4 w-full px-8 mt-4">
-            <Button variant="ghost" size="lg" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
-              Registrarse
-            </Button>
-            <Button variant="primary" size="lg" className="w-full shadow-[0_0_20px_rgba(255,222,0,0.3)]" onClick={() => setIsMobileMenuOpen(false)}>
-              Jugar Ahora
-            </Button>
+            <Link href="/login" className="w-full">
+              <Button variant="ghost" size="lg" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
+                Registrarse
+              </Button>
+            </Link>
+            <Link href="/login" className="w-full">
+              <Button variant="primary" size="lg" className="w-full shadow-[0_0_20px_rgba(255,222,0,0.3)]" onClick={() => setIsMobileMenuOpen(false)}>
+                Jugar Ahora
+              </Button>
+            </Link>
           </div>
         </div>
       )}

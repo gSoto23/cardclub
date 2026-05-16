@@ -11,6 +11,9 @@ interface Auction {
   start_price: number;
   current_price: number;
   end_time: string;
+  condition?: string;
+  is_foil?: boolean;
+  category_name?: string;
 }
 
 export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction }) => {
@@ -80,7 +83,26 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
         </div>
         <div>
           <h3 className="text-white font-bold text-lg leading-tight">{initialAuction.product_name}</h3>
-          <p className="text-brand-yellow text-xs font-black uppercase tracking-widest mt-1">Acaba pronto</p>
+          
+          <div className="flex flex-wrap gap-1 mt-1 mb-1">
+            {initialAuction.condition && (
+              <span className="bg-white/10 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-white/20 uppercase tracking-wider">
+                {initialAuction.condition}
+              </span>
+            )}
+            {initialAuction.category_name && (
+              <span className="bg-purple-600/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-white/20 uppercase tracking-wider">
+                {initialAuction.category_name}
+              </span>
+            )}
+            {initialAuction.is_foil && (
+              <span className="bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-500 text-brand-blue text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                Foil
+              </span>
+            )}
+          </div>
+          
+          <p className="text-brand-yellow text-[10px] font-black uppercase tracking-widest">Acaba pronto</p>
         </div>
       </div>
 
