@@ -3,7 +3,7 @@ import { ActiveAuctionCard } from "@/components/ui/ActiveAuctionCard";
 
 async function getActiveAuctions() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/auctions/active", { cache: 'no-store' });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auctions/active`, { cache: 'no-store' });
     if (!res.ok) throw new Error("Failed");
     return res.json();
   } catch (error) {
@@ -14,7 +14,7 @@ async function getActiveAuctions() {
 
 async function getFinishedAuctions() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/auctions/finished", { cache: 'no-store' });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auctions/finished`, { cache: 'no-store' });
     if (!res.ok) throw new Error("Failed");
     return res.json();
   } catch (error) {
@@ -43,15 +43,17 @@ export default async function SubastasPage() {
         </p>
       </div>
 
-      {/* Grid de Subastas Activas */}
+      {/* Slider de Subastas Activas */}
       {auctions.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center flex flex-col items-center justify-center min-h-[300px] mb-16">
           <p className="text-white/60 font-medium">No hay subastas activas en este momento.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+        <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 mb-16">
           {auctions.map((auction: any) => (
-            <ActiveAuctionCard key={auction.id} initialAuction={auction} />
+            <div key={auction.id} className="snap-start shrink-0 w-[320px] md:w-[380px]">
+              <ActiveAuctionCard initialAuction={auction} />
+            </div>
           ))}
         </div>
       )}
@@ -59,13 +61,19 @@ export default async function SubastasPage() {
       {/* Salón de la Fama / Productos Subastados */}
       {finishedAuctions.length > 0 && (
         <div className="mt-24 pt-12 border-t border-white/10">
-          <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-8">
-            Historial de <span className="text-brand-yellow">Subastas</span>
-          </h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">
+              Historial de <span className="text-brand-yellow">Subastas</span>
+            </h2>
+            <div className="hidden md:flex items-center gap-1 text-white/40">
+              <span className="text-xs font-bold uppercase tracking-widest mr-2">Desliza</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
             {finishedAuctions.map((auction: any) => (
-              <div key={auction.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden grayscale hover:grayscale-0 transition-all duration-500 flex flex-col opacity-70 hover:opacity-100">
+              <div key={auction.id} className="snap-start shrink-0 w-[260px] md:w-[300px] bg-white/5 border border-white/10 rounded-xl overflow-hidden grayscale hover:grayscale-0 transition-all duration-500 flex flex-col opacity-70 hover:opacity-100">
                 <div className="h-40 bg-black/40 overflow-hidden relative">
                   <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
                     <span className="border-2 border-red-500 text-red-500 font-black text-2xl uppercase tracking-widest px-4 py-1 -rotate-12 rounded">Vendido</span>

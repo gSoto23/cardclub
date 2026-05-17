@@ -30,9 +30,19 @@ interface Sale {
   items: SaleItem[];
 }
 
+interface ApprovalItem {
+  id: number;
+  type: string;
+  user_email: string;
+  user_whatsapp?: string;
+  payment_method: string;
+  total_amount: number;
+  date: string;
+}
+
 export default function SalesAdmin() {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"POS" | "Historial">("POS");
+  const [activeTab, setActiveTab] = useState<"POS" | "Historial" | "Aprobaciones">("POS");
   
   // POS State
   const [products, setProducts] = useState<Product[]>([]);
@@ -48,6 +58,11 @@ export default function SalesAdmin() {
   const [endDate, setEndDate] = useState("");
   const [sortBy, setSortBy] = useState("sale_date");
   const [order, setOrder] = useState("desc");
+  const [searchId, setSearchId] = useState("");
+
+  // Approvals State
+  const [approvalsSales, setApprovalsSales] = useState<ApprovalItem[]>([]);
+  const [approvalsRegs, setApprovalsRegs] = useState<ApprovalItem[]>([]);
 
   const LIMIT = 10;
 
@@ -59,11 +74,12 @@ export default function SalesAdmin() {
     }
     fetchProducts();
     fetchSales();
-  }, [page, startDate, endDate, sortBy, order]);
+    fetchApprovals();
+  }, [page, startDate, endDate, sortBy, order, searchId]);
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/products");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`);
       if (res.ok) setProducts(await res.json());
     } catch (err) {
       console.error(err);
@@ -72,9 +88,10 @@ export default function SalesAdmin() {
 
   const fetchSales = async () => {
     try {
-      let url = `http://127.0.0.1:8000/api/sales?skip=${page * LIMIT}&limit=${LIMIT}&sort_by=${sortBy}&order=${order}`;
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/api/sales?skip=${page * LIMIT}&limit=${LIMIT}&sort_by=${sortBy}&order=${order}`;
       if (startDate) url += `&start_date=${new Date(startDate).toISOString()}`;
       if (endDate) url += `&end_date=${new Date(endDate).toISOString()}`;
+      if (searchId) url += `&search_id=${searchId}`;
 
       const res = await fetch(url, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` }
@@ -86,6 +103,46 @@ export default function SalesAdmin() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchApprovals = async () => {
+    try {
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/api/approvals/pending`;
+      if (searchId) url += `?search_id=${searchId}`;
+      const res = await fetch(url, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setApprovalsSales(data.sales);
+        setApprovalsRegs(data.registrations);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const confirmApproval = async (id: number, type: "sale" | "registration") => {
+    try {
+      const endpoint = type === "sale" 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/sales/${id}/confirm`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/tournaments/registrations/${id}/confirm`;
+      
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` }
+      });
+
+      if (res.ok) {
+        alert("Pago confirmado");
+        fetchApprovals(); // Refresh approvals
+        fetchSales(); // Refresh history
+      } else {
+        alert("Error confirmando pago");
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -144,7 +201,7 @@ export default function SalesAdmin() {
     };
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/sales", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -190,18 +247,29 @@ export default function SalesAdmin() {
       <div className="container mx-auto px-6 py-8">
         
         {/* Tabs */}
-        <div className="flex border-b border-white/10 mb-8">
+        <div className="flex border-b border-white/10 mb-8 overflow-x-auto">
           <button 
             onClick={() => setActiveTab("POS")}
-            className={`px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors ${activeTab === "POS" ? "text-brand-yellow border-b-2 border-brand-yellow" : "text-white/40 hover:text-white"}`}
+            className={`px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors whitespace-nowrap ${activeTab === "POS" ? "text-brand-yellow border-b-2 border-brand-yellow" : "text-white/40 hover:text-white"}`}
           >
             Punto de Venta (POS)
           </button>
           <button 
             onClick={() => setActiveTab("Historial")}
-            className={`px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors ${activeTab === "Historial" ? "text-brand-yellow border-b-2 border-brand-yellow" : "text-white/40 hover:text-white"}`}
+            className={`px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors whitespace-nowrap ${activeTab === "Historial" ? "text-brand-yellow border-b-2 border-brand-yellow" : "text-white/40 hover:text-white"}`}
           >
             Historial de Ventas
+          </button>
+          <button 
+            onClick={() => setActiveTab("Aprobaciones")}
+            className={`px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === "Aprobaciones" ? "text-brand-yellow border-b-2 border-brand-yellow" : "text-white/40 hover:text-white"}`}
+          >
+            Aprobaciones
+            {(approvalsSales.length > 0 || approvalsRegs.length > 0) && (
+              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                {approvalsSales.length + approvalsRegs.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -388,6 +456,10 @@ export default function SalesAdmin() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Buscar por ID</label>
+                  <input type="number" placeholder="Ej. 102" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-black/40 border border-white/20 rounded p-2 text-white text-sm w-32" />
+                </div>
+                <div className="flex flex-col gap-1">
                   <label className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Orden</label>
                   <select value={order} onChange={e => setOrder(e.target.value)} className="bg-black/40 border border-white/20 rounded p-2 text-white text-sm">
                     <option value="desc">Descendente ↓</option>
@@ -453,6 +525,129 @@ export default function SalesAdmin() {
                 </Button>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === "Aprobaciones" && (
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <h2 className="text-2xl font-black text-brand-yellow italic uppercase tracking-tighter mb-2">Cobros Pendientes</h2>
+            <p className="text-white/60 text-sm mb-6">Confirma la recepción de SINPE o Efectivo para liberar pedidos online o confirmar inscripciones.</p>
+            
+            <div className="flex mb-8 pb-6 border-b border-white/10">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Buscar por ID</label>
+                <div className="flex gap-2">
+                  <input type="number" placeholder="Ej. 45" value={searchId} onChange={e => setSearchId(e.target.value)} className="bg-black/40 border border-white/20 rounded p-2 text-white text-sm w-32" />
+                  <Button variant="ghost" size="sm" onClick={() => setSearchId("")}>Limpiar</Button>
+                </div>
+              </div>
+            </div>
+            
+            {(approvalsSales.length === 0 && approvalsRegs.length === 0) ? (
+              <div className="text-center py-16 border border-white/5 rounded-xl bg-black/20">
+                <p className="text-white/40 font-bold uppercase tracking-widest">No hay pagos pendientes de confirmación.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Pedidos Online */}
+                <div className="bg-black/20 border border-white/10 rounded-xl p-6">
+                  <h3 className="text-white font-black uppercase tracking-widest text-lg mb-4 flex items-center justify-between">
+                    Pedidos Online
+                    <span className="text-brand-yellow text-xs">{approvalsSales.length} pendientes</span>
+                  </h3>
+                  <div className="space-y-4">
+                    {approvalsSales.map(sale => (
+                      <div key={sale.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-bold">{sale.user_email}</p>
+                              {sale.user_whatsapp && (
+                                <a 
+                                  href={`https://wa.me/${sale.user_whatsapp.replace(/\D/g, '')}`} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="bg-green-500/20 text-green-400 hover:bg-green-500/40 border border-green-500/30 rounded px-2 py-0.5 flex items-center gap-1 transition-colors shrink-0"
+                                  title="Contactar por WhatsApp"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                                  <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Contactar</span>
+                                </a>
+                              )}
+                            </div>
+                            <p className="text-white/40 text-xs">
+                              <span className="font-mono font-bold text-brand-yellow">#V-{sale.id}</span> - {new Date(sale.date).toLocaleString('es-CR')}
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.payment_method === 'SINPE' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
+                            {sale.payment_method}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-4">
+                          <p className="text-brand-yellow font-black text-xl">{formatCRC(sale.total_amount)}</p>
+                          <Button variant="primary" size="sm" onClick={() => confirmApproval(sale.id, "sale")}>
+                            Confirmar Pago
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {approvalsSales.length === 0 && (
+                      <p className="text-white/40 text-sm italic">Todo al día en la tienda online.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inscripciones a Torneos */}
+                <div className="bg-black/20 border border-white/10 rounded-xl p-6">
+                  <h3 className="text-white font-black uppercase tracking-widest text-lg mb-4 flex items-center justify-between">
+                    Inscripciones a Torneos
+                    <span className="text-brand-yellow text-xs">{approvalsRegs.length} pendientes</span>
+                  </h3>
+                  <div className="space-y-4">
+                    {approvalsRegs.map(reg => (
+                      <div key={reg.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-bold">{reg.user_email}</p>
+                              {reg.user_whatsapp && (
+                                <a 
+                                  href={`https://wa.me/${reg.user_whatsapp.replace(/\D/g, '')}`} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="bg-green-500/20 text-green-400 hover:bg-green-500/40 border border-green-500/30 rounded px-2 py-0.5 flex items-center gap-1 transition-colors shrink-0"
+                                  title="Contactar por WhatsApp"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                                  <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Contactar</span>
+                                </a>
+                              )}
+                            </div>
+                            <p className="text-white/40 text-xs">
+                              <span className="font-mono font-bold text-brand-yellow">#I-{reg.id}</span> - {reg.type}
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${reg.payment_method === 'SINPE' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
+                            {reg.payment_method}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-4">
+                          <p className="text-brand-yellow font-black text-xl">{formatCRC(reg.total_amount)}</p>
+                          <Button variant="primary" size="sm" onClick={() => confirmApproval(reg.id, "registration")}>
+                            Confirmar Pago
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {approvalsRegs.length === 0 && (
+                      <p className="text-white/40 text-sm italic">Todo al día en las inscripciones.</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
           </div>
         )}
 

@@ -31,3 +31,10 @@ alembic.ini
 .idea/
 *.swp
 *.swo
+
+# Databases & Uploads
+*.db
+*.sqlite
+*.sqlite3
+backend/static/uploads/
+backend/cardclub.db

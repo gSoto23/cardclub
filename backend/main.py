@@ -11,6 +11,8 @@ from typing import List
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta, datetime, timezone
 
+CR_TZ = timezone(timedelta(hours=-6))
+
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
@@ -47,7 +49,7 @@ async def health_check():
 
 # --- UPLOADS ---
 @app.post("/api/upload", tags=["Uploads"])
-async def upload_image(file: UploadFile = File(...), current_admin: models.User = Depends(auth.get_current_admin_user)):
+async def upload_image(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     file_extension = os.path.splitext(file.filename)[1]
     file_name = f"{uuid.uuid4()}{file_extension}"
     file_path = os.path.join("static", "uploads", file_name)
@@ -55,9 +57,33 @@ async def upload_image(file: UploadFile = File(...), current_admin: models.User 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    return {"image_url": f"http://127.0.0.1:8000/static/uploads/{file_name}"}
+    base_url = os.getenv("API_BASE_URL", "")
+    image_url = f"{base_url.rstrip('/')}/static/uploads/{file_name}" if base_url else f"/static/uploads/{file_name}"
+    return {"image_url": image_url}
 
-# --- AUTHENTICATION ---
+# --- AUTHENTICATION & USERS ---
+@app.post("/api/register", response_model=schemas.User, tags=["Auth"])
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Verificar si el correo existe
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
+    
+    hashed_password = auth.get_password_hash(user.password)
+    new_user = models.User(
+        email=user.email,
+        hashed_password=hashed_password,
+        full_name=user.full_name,
+        nickname=user.nickname,
+        whatsapp=user.whatsapp,
+        avatar_url=user.avatar_url,
+        role="player"
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
 @app.post("/api/login", response_model=schemas.Token, tags=["Auth"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
@@ -72,6 +98,25 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         data={"sub": user.email, "role": user.role}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/api/users/me", response_model=schemas.User, tags=["Users"])
+def get_current_user_profile(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
+@app.put("/api/users/me", response_model=schemas.User, tags=["Users"])
+def update_user_profile(user_update: schemas.UserUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if user_update.full_name is not None:
+        current_user.full_name = user_update.full_name
+    if user_update.nickname is not None:
+        current_user.nickname = user_update.nickname
+    if user_update.whatsapp is not None:
+        current_user.whatsapp = user_update.whatsapp
+    if user_update.avatar_url is not None:
+        current_user.avatar_url = user_update.avatar_url
+        
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 # --- CATEGORIES ---
 @app.get("/api/categories", response_model=List[schemas.Category], tags=["Categories"])
@@ -101,6 +146,34 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     db.refresh(db_product)
     return db_product
 
+@app.put("/api/products/{product_id}", response_model=schemas.Product, tags=["Products"])
+def update_product(product_id: int, product_update: schemas.ProductUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    
+    update_data = product_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_product, key, value)
+        
+    db.commit()
+    db.refresh(db_product)
+    return db_product
+
+@app.delete("/api/products/{product_id}", tags=["Products"])
+def delete_product(product_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+        
+    try:
+        db.delete(db_product)
+        db.commit()
+        return {"status": "ok", "message": "Producto eliminado"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="No se puede eliminar este producto porque tiene historial (Ventas/Subastas). Coloca el stock en 0 para ocultarlo.")
+
 # --- AUCTIONS ---
 @app.get("/api/auctions", response_model=List[schemas.Auction], tags=["Auctions"])
 def read_all_auctions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -110,7 +183,7 @@ def read_all_auctions(skip: int = 0, limit: int = 100, db: Session = Depends(get
 
 @app.get("/api/auctions/active", tags=["Auctions"])
 def get_active_auctions(db: Session = Depends(get_db)):
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(CR_TZ).replace(tzinfo=None)
     # Obtenemos las subastas activas que ya iniciaron y no han cerrado
     auctions = db.query(models.Auction).filter(
         models.Auction.is_active == True,
@@ -135,7 +208,7 @@ def get_active_auctions(db: Session = Depends(get_db)):
 
 @app.get("/api/auctions/finished", tags=["Auctions"])
 def get_finished_auctions(db: Session = Depends(get_db)):
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(CR_TZ).replace(tzinfo=None)
     # Subastas que ya pasaron su fecha de cierre
     auctions = db.query(models.Auction).filter(models.Auction.end_time <= now).all()
     result = []
@@ -174,6 +247,63 @@ def create_auction(auction: schemas.AuctionCreate, db: Session = Depends(get_db)
     db.refresh(db_auction)
     return db_auction
 
+@app.put("/api/auctions/{auction_id}", response_model=schemas.Auction, tags=["Auctions"])
+def update_auction(auction_id: int, auction_update: schemas.AuctionUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_auction = db.query(models.Auction).filter(models.Auction.id == auction_id).first()
+    if not db_auction:
+        raise HTTPException(status_code=404, detail="Subasta no encontrada")
+    
+    update_data = auction_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_auction, key, value)
+        
+    db.commit()
+    db.refresh(db_auction)
+    return db_auction
+
+@app.delete("/api/auctions/{auction_id}", tags=["Auctions"])
+def delete_auction(auction_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_auction = db.query(models.Auction).filter(models.Auction.id == auction_id).first()
+    if not db_auction:
+        raise HTTPException(status_code=404, detail="Subasta no encontrada")
+        
+    try:
+        # First delete associated bids manually to avoid foreign key issues since we don't have cascade setup
+        db.query(models.Bid).filter(models.Bid.auction_id == auction_id).delete()
+        db.delete(db_auction)
+        db.commit()
+        return {"status": "ok", "message": "Subasta eliminada"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Error eliminando subasta")
+
+# --- CHAMPIONSHIPS ---
+@app.get("/api/championships", response_model=List[schemas.Championship], tags=["Championships"])
+def get_championships(db: Session = Depends(get_db)):
+    return db.query(models.Championship).all()
+
+@app.post("/api/championships", response_model=schemas.Championship, tags=["Championships"])
+def create_championship(championship: schemas.ChampionshipCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_championship = models.Championship(**championship.dict())
+    db.add(db_championship)
+    db.commit()
+    db.refresh(db_championship)
+    return db_championship
+
+@app.put("/api/championships/{championship_id}", response_model=schemas.Championship, tags=["Championships"])
+def update_championship(championship_id: int, championship_update: schemas.ChampionshipUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_championship = db.query(models.Championship).filter(models.Championship.id == championship_id).first()
+    if not db_championship:
+        raise HTTPException(status_code=404, detail="Campeonato no encontrado")
+    
+    update_data = championship_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_championship, key, value)
+        
+    db.commit()
+    db.refresh(db_championship)
+    return db_championship
+
 # --- TOURNAMENTS ---
 @app.get("/api/tournaments", response_model=List[schemas.Tournament], tags=["Tournaments"])
 def get_tournaments(db: Session = Depends(get_db)):
@@ -186,6 +316,36 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
     db.commit()
     db.refresh(db_tournament)
     return db_tournament
+
+@app.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament, tags=["Tournaments"])
+def update_tournament(tournament_id: int, tournament_update: schemas.TournamentUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    if not db_tournament:
+        raise HTTPException(status_code=404, detail="Torneo no encontrado")
+    
+    update_data = tournament_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_tournament, key, value)
+        
+    db.commit()
+    db.refresh(db_tournament)
+    return db_tournament
+
+@app.delete("/api/tournaments/{tournament_id}", tags=["Tournaments"])
+def delete_tournament(tournament_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    if not db_tournament:
+        raise HTTPException(status_code=404, detail="Torneo no encontrado")
+        
+    try:
+        # Delete registrations first
+        db.query(models.TournamentRegistration).filter(models.TournamentRegistration.tournament_id == tournament_id).delete()
+        db.delete(db_tournament)
+        db.commit()
+        return {"status": "ok", "message": "Torneo eliminado"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="No se pudo eliminar el torneo")
 
 @app.post("/api/tournaments/{tournament_id}/register", response_model=schemas.TournamentRegistration, tags=["Tournaments"])
 def register_for_tournament(tournament_id: int, payload: schemas.TournamentRegistrationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -226,6 +386,62 @@ def get_my_tournaments(db: Session = Depends(get_db), current_user: models.User 
         })
     return result
 
+@app.get("/api/users/me/bids/active", tags=["Users"])
+def get_my_active_bids(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    now = datetime.now(CR_TZ).replace(tzinfo=None)
+    # Buscar todas las pujas del usuario en subastas activas
+    my_bids = db.query(models.Bid).join(models.Auction).filter(
+        models.Bid.user_id == current_user.id,
+        models.Auction.is_active == True,
+        models.Auction.end_time > now
+    ).all()
+    
+    # Agrupar por auction para evitar duplicados si pujó varias veces en la misma
+    auction_dict = {}
+    for bid in my_bids:
+        auction = bid.auction
+        if auction.id not in auction_dict:
+            # Check highest bid
+            highest_bid = max(auction.bids, key=lambda b: b.amount)
+            is_winning = highest_bid.user_id == current_user.id
+            
+            auction_dict[auction.id] = {
+                "auction_id": auction.id,
+                "product_name": auction.product.name,
+                "image_url": auction.product.image_url,
+                "current_price": auction.current_price,
+                "end_time": auction.end_time,
+                "is_winning": is_winning
+            }
+            
+    return list(auction_dict.values())
+
+@app.get("/api/users/me/auctions/won", tags=["Users"])
+def get_my_won_auctions(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    now = datetime.now(CR_TZ).replace(tzinfo=None)
+    # Buscar todas las subastas finalizadas en las que el usuario haya participado
+    my_bids = db.query(models.Bid).join(models.Auction).filter(
+        models.Bid.user_id == current_user.id,
+        models.Auction.end_time <= now
+    ).all()
+    
+    won_auctions = {}
+    for bid in my_bids:
+        auction = bid.auction
+        if auction.id not in won_auctions:
+            highest_bid = max(auction.bids, key=lambda b: b.amount)
+            # Solo la agregamos si la ganamos
+            if highest_bid.user_id == current_user.id:
+                won_auctions[auction.id] = {
+                    "auction_id": auction.id,
+                    "product_name": auction.product.name,
+                    "image_url": auction.product.image_url,
+                    "final_price": auction.current_price,
+                    "end_time": auction.end_time
+                }
+                
+    return list(won_auctions.values())
+
 @app.get("/api/tournaments/{tournament_id}/registrations", tags=["Tournaments"])
 def get_tournament_registrations(tournament_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
     registrations = db.query(models.TournamentRegistration).filter(models.TournamentRegistration.tournament_id == tournament_id).all()
@@ -233,7 +449,9 @@ def get_tournament_registrations(tournament_id: int, db: Session = Depends(get_d
     for reg in registrations:
         result.append({
             "id": reg.id,
+            "user_id": reg.user.id,
             "user_email": reg.user.email,
+            "user_whatsapp": reg.user.whatsapp,
             "payment_method": reg.payment_method,
             "status": reg.status,
             "registered_at": reg.timestamp
@@ -277,8 +495,58 @@ def confirm_registration(registration_id: int, db: Session = Depends(get_db), cu
     return {"status": "ok", "message": "Inscripción confirmada y venta registrada"}
 
 # --- SALES & POS ---
-from sqlalchemy import desc, asc
+from sqlalchemy import desc, asc, func
 from typing import Optional
+
+# --- RESULTS & RANKING ---
+@app.get("/api/tournaments/{tournament_id}/results", tags=["Tournaments", "Ranking"])
+def get_tournament_results(tournament_id: int, db: Session = Depends(get_db)):
+    results = db.query(models.TournamentResult).filter(models.TournamentResult.tournament_id == tournament_id).all()
+    return results
+
+@app.post("/api/tournaments/{tournament_id}/results", tags=["Tournaments", "Ranking"])
+def save_tournament_results(tournament_id: int, results: List[schemas.TournamentResultBase], db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db.query(models.TournamentResult).filter(models.TournamentResult.tournament_id == tournament_id).delete()
+    for res in results:
+        db_res = models.TournamentResult(
+            tournament_id=tournament_id,
+            user_id=res.user_id,
+            points=res.points,
+            position=res.position
+        )
+        db.add(db_res)
+    db.commit()
+    return {"status": "ok", "message": "Resultados guardados"}
+
+@app.get("/api/ranking", response_model=List[schemas.RankingUserResponse], tags=["Ranking"])
+def get_global_ranking(championship_id: Optional[int] = None, db: Session = Depends(get_db)):
+    if not championship_id:
+        active_champ = db.query(models.Championship).filter(models.Championship.is_active == True).first()
+        if active_champ:
+            championship_id = active_champ.id
+
+    query = db.query(
+        models.TournamentResult.user_id,
+        func.sum(models.TournamentResult.points).label('total_points')
+    ).join(models.Tournament, models.Tournament.id == models.TournamentResult.tournament_id)
+    
+    if championship_id:
+        query = query.filter(models.Tournament.championship_id == championship_id)
+
+    ranking_data = query.group_by(models.TournamentResult.user_id).order_by(desc('total_points')).all()
+    
+    response = []
+    for r in ranking_data:
+        user = db.query(models.User).filter(models.User.id == r.user_id).first()
+        if user:
+            response.append({
+                "user_id": user.id,
+                "email": user.email,
+                "nickname": user.nickname,
+                "avatar_url": user.avatar_url,
+                "total_points": r.total_points
+            })
+    return response
 
 @app.post("/api/sales", response_model=schemas.Sale, tags=["Sales"])
 def create_sale(sale: schemas.SaleCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
@@ -314,6 +582,67 @@ def create_sale(sale: schemas.SaleCreate, db: Session = Depends(get_db), current
     db.refresh(db_sale)
     return db_sale
 
+@app.get("/api/approvals/pending", tags=["Sales", "Tournaments"])
+def get_pending_approvals(search_id: Optional[int] = None, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    sales_query = db.query(models.Sale).filter(
+        models.Sale.status == "Pendiente",
+        models.Sale.payment_method.in_(["SINPE", "Efectivo"])
+    )
+    if search_id:
+        sales_query = sales_query.filter(models.Sale.id == search_id)
+    pending_sales = sales_query.all()
+    
+    regs_query = db.query(models.TournamentRegistration).filter(
+        models.TournamentRegistration.status == "Pendiente",
+        models.TournamentRegistration.payment_method.in_(["SINPE", "Efectivo"])
+    )
+    if search_id:
+        regs_query = regs_query.filter(models.TournamentRegistration.id == search_id)
+    pending_regs = regs_query.all()
+
+    sales_result = []
+    for sale in pending_sales:
+        user = db.query(models.User).filter(models.User.id == sale.user_id).first()
+        sales_result.append({
+            "id": sale.id,
+            "type": "Pedido Online",
+            "user_email": user.email if user else "Desconocido",
+            "user_whatsapp": user.whatsapp if user else None,
+            "payment_method": sale.payment_method,
+            "total_amount": sale.total_amount,
+            "date": sale.sale_date
+        })
+
+    regs_result = []
+    for reg in pending_regs:
+        regs_result.append({
+            "id": reg.id,
+            "type": f"Torneo: {reg.tournament.name}",
+            "user_email": reg.user.email,
+            "user_whatsapp": reg.user.whatsapp,
+            "payment_method": reg.payment_method,
+            "total_amount": reg.tournament.entry_fee,
+            "date": reg.timestamp
+        })
+
+    return {
+        "sales": sales_result,
+        "registrations": regs_result
+    }
+
+@app.patch("/api/sales/{sale_id}/confirm", tags=["Sales"])
+def confirm_sale(sale_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    sale = db.query(models.Sale).filter(models.Sale.id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    
+    if sale.status == "Completado":
+        return {"status": "ok", "message": "La venta ya estaba completada"}
+        
+    sale.status = "Completado"
+    db.commit()
+    return {"status": "ok", "message": "Venta confirmada"}
+
 @app.get("/api/sales", response_model=List[schemas.Sale], tags=["Sales"])
 def get_sales(
     skip: int = 0, 
@@ -322,11 +651,14 @@ def get_sales(
     end_date: Optional[str] = None, 
     sort_by: str = "sale_date", 
     order: str = "desc", 
+    search_id: Optional[int] = None,
     db: Session = Depends(get_db), 
     current_admin: models.User = Depends(auth.get_current_admin_user)
 ):
     query = db.query(models.Sale)
 
+    if search_id:
+        query = query.filter(models.Sale.id == search_id)
     if start_date:
         query = query.filter(models.Sale.sale_date >= datetime.fromisoformat(start_date))
     if end_date:
@@ -338,6 +670,49 @@ def get_sales(
         query = query.order_by(asc(getattr(models.Sale, sort_by)))
         
     return query.offset(skip).limit(limit).all()
+
+@app.post("/api/checkout", response_model=schemas.Sale, tags=["Sales"])
+def process_checkout(sale: schemas.SaleCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Calculate real total amount and verify stock
+    calculated_total = 0.0
+    for item in sale.items:
+        if item.reference_type == "Producto" and item.reference_id:
+            product = db.query(models.Product).filter(models.Product.id == item.reference_id).first()
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Producto {item.reference_id} no encontrado")
+            if product.stock < item.quantity:
+                raise HTTPException(status_code=400, detail=f"Stock insuficiente para {product.name}")
+            # Use actual database price for security
+            calculated_total += product.price * item.quantity
+
+    db_sale = models.Sale(
+        user_id=current_user.id,
+        total_amount=calculated_total,
+        payment_method=sale.payment_method,
+        sale_type="Online",
+        status="Pendiente"
+    )
+    db.add(db_sale)
+    db.commit()
+    db.refresh(db_sale)
+
+    for item in sale.items:
+        # Fetch product again to subtract stock
+        product = db.query(models.Product).filter(models.Product.id == item.reference_id).first()
+        db_item = models.SaleItem(
+            sale_id=db_sale.id,
+            description=product.name,
+            price=product.price,
+            quantity=item.quantity,
+            reference_type="Producto",
+            reference_id=product.id
+        )
+        db.add(db_item)
+        product.stock -= item.quantity
+    
+    db.commit()
+    db.refresh(db_sale)
+    return db_sale
 
 # --- WEBSOCKETS PARA SUBASTAS ---
 from fastapi import WebSocket, WebSocketDisconnect
@@ -373,12 +748,19 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
         while True:
             # Esperamos que el cliente envíe una puja en formato JSON: {"user_id": 1, "amount": 150.0}
             data = await websocket.receive_text()
-            payload = json.loads(data)
-            new_amount = float(payload.get("amount", 0))
-            user_id = int(payload.get("user_id", 0))
+            try:
+                payload = json.loads(data)
+                new_amount = float(payload.get("amount", 0))
+                user_id = int(payload.get("user_id", 0))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "Formato de puja inválido."
+                }))
+                continue
             
-            # Buscar la subasta
-            auction = db.query(models.Auction).filter(models.Auction.id == auction_id).first()
+            # Buscar la subasta con bloqueo de fila para evitar race conditions
+            auction = db.query(models.Auction).filter(models.Auction.id == auction_id).with_for_update().first()
             
             if auction and auction.is_active and new_amount > auction.current_price:
                 # Actualizar precio
@@ -406,3 +788,22 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket, auction_id)
+
+# --- CONFIG ---
+@app.get("/api/config", response_model=List[schemas.SiteConfig], tags=["Config"])
+def get_site_config(db: Session = Depends(get_db)):
+    return db.query(models.SiteConfig).all()
+
+@app.post("/api/config", tags=["Config"])
+def update_site_config(payload: schemas.SiteConfigUpdateList, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    for config_item in payload.configs:
+        existing = db.query(models.SiteConfig).filter(models.SiteConfig.key == config_item.key).first()
+        if existing:
+            existing.value = config_item.value
+            if config_item.description is not None:
+                existing.description = config_item.description
+        else:
+            new_conf = models.SiteConfig(**config_item.dict())
+            db.add(new_conf)
+    db.commit()
+    return {"status": "ok", "message": "Configuración actualizada"}

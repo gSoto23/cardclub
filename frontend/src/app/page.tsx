@@ -14,7 +14,7 @@ export default function Home() {
 
       {/* Hero Content */}
       <div className="relative z-10 max-w-5xl w-full text-center space-y-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-        
+
         {/* Badge */}
         <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 rounded-full bg-black/30 border border-brand-yellow/30 text-brand-yellow text-[10px] md:text-xs font-black tracking-[0.2em] uppercase backdrop-blur-sm shadow-[0_0_15px_rgba(255,222,0,0.15)] text-center max-w-[90vw]">
           <span className="w-2 h-2 rounded-full bg-brand-yellow animate-ping flex-shrink-0" />
@@ -24,7 +24,7 @@ export default function Home() {
         {/* Headline */}
         <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-[7rem] font-black tracking-tighter text-white leading-[0.9] uppercase italic break-words">
           Domina <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-br from-brand-yellow to-yellow-600 drop-shadow-[0_0_20px_rgba(255,222,0,0.4)]">
+          <span className="text-transparent bg-clip-text bg-gradient-to-br from-brand-yellow to-yellow-600 drop-shadow-[0_0_20px_rgba(255,222,0,0.4)] pr-4">
             El Juego
           </span>
         </h1>

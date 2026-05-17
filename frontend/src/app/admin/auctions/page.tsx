@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { toast } from "react-hot-toast";
 
 interface Product {
   id: number;
@@ -30,6 +31,7 @@ export default function AuctionsAdmin() {
   
   // Form State
   const [showForm, setShowForm] = useState(false);
+  const [editingAuctionId, setEditingAuctionId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     product_id: 1,
     start_price: 0,
@@ -40,8 +42,8 @@ export default function AuctionsAdmin() {
   const fetchData = async () => {
     try {
       const [aucRes, prodRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/auctions"),
-        fetch("http://127.0.0.1:8000/api/products")
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auctions`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`)
       ]);
       const [aucData, prodData] = await Promise.all([aucRes.json(), prodRes.json()]);
       setAuctions(aucData);
@@ -66,7 +68,7 @@ export default function AuctionsAdmin() {
     fetchData();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("auth_token");
     try {
@@ -77,8 +79,16 @@ export default function AuctionsAdmin() {
         end_time: new Date(formData.end_time).toISOString()
       };
 
-      const res = await fetch("http://127.0.0.1:8000/api/auctions", {
-        method: "POST",
+      const isEditing = editingAuctionId !== null;
+      const url = isEditing 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/auctions/${editingAuctionId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/auctions`;
+      const method = isEditing ? "PUT" : "POST";
+
+      const toastId = toast.loading(isEditing ? 'Actualizando...' : 'Creando subasta...');
+
+      const res = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -86,13 +96,69 @@ export default function AuctionsAdmin() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        toast.success(isEditing ? 'Subasta actualizada' : 'Subasta creada', { id: toastId });
         setShowForm(false);
+        setEditingAuctionId(null);
+        resetForm();
         fetchData(); // Refresh list
       } else {
-        alert("Error creando subasta");
+        toast.error('Error guardando subasta', { id: toastId });
       }
     } catch (err) {
       console.error(err);
+      toast.error('Error de conexión');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      product_id: products.length > 0 ? products[0].id : 1,
+      start_price: products.length > 0 ? products[0].price : 0,
+      start_time: new Date().toISOString().slice(0, 16),
+      end_time: new Date(new Date().getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+    });
+    setEditingAuctionId(null);
+  };
+
+  const handleEdit = (auction: Auction) => {
+    // Format dates to datetime-local expected format (YYYY-MM-DDTHH:mm)
+    const formatDateTimeLocal = (dateString: string) => {
+      const d = new Date(dateString);
+      // We need local time, pad correctly
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    setFormData({
+      product_id: auction.product_id,
+      start_price: auction.start_price,
+      start_time: formatDateTimeLocal(auction.start_time),
+      end_time: formatDateTimeLocal(auction.end_time)
+    });
+    setEditingAuctionId(auction.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (auctionId: number) => {
+    if (!confirm("¿Seguro que deseas eliminar esta subasta?")) return;
+    const token = localStorage.getItem("auth_token");
+    const toastId = toast.loading('Eliminando...');
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auctions/${auctionId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        toast.success('Subasta eliminada', { id: toastId });
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.detail || 'Error eliminando la subasta', { id: toastId });
+      }
+    } catch (err) {
+      toast.error('Error de conexión', { id: toastId });
     }
   };
 
@@ -122,15 +188,24 @@ export default function AuctionsAdmin() {
       <div className="container mx-auto px-6 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-black text-white">Arena de Subastas</h1>
-          <Button variant="primary" onClick={() => setShowForm(!showForm)}>
+          <Button variant="primary" onClick={() => {
+            if (showForm) {
+              setShowForm(false);
+              resetForm();
+            } else {
+              setShowForm(true);
+            }
+          }}>
             {showForm ? "Cancelar" : "+ Nueva Subasta"}
           </Button>
         </div>
 
         {showForm && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-md">
-            <h2 className="text-xl font-bold text-white mb-4">Configurar Nueva Subasta</h2>
-            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-md animate-in fade-in slide-in-from-top-4">
+            <h2 className="text-xl font-bold text-white mb-4">
+              {editingAuctionId ? "Editar Subasta" : "Configurar Nueva Subasta"}
+            </h2>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               <div className="space-y-1 md:col-span-3">
                 <label className="text-xs text-white/60 font-bold uppercase">Producto a Subastar (Desde Inventario)</label>
@@ -181,7 +256,7 @@ export default function AuctionsAdmin() {
                   type="number" 
                   required 
                   min="0" 
-                  value={formData.start_price} 
+                  value={Number.isNaN(formData.start_price) ? "" : formData.start_price} 
                   onChange={e => setFormData({...formData, start_price: parseFloat(e.target.value)})} 
                   className="w-full bg-black/40 border border-brand-yellow/30 rounded p-3 text-white focus:border-brand-yellow focus:outline-none transition-colors" 
                 />
@@ -214,8 +289,11 @@ export default function AuctionsAdmin() {
                 <p className="text-[10px] text-white/40 mt-1">Momento exacto en que se cerrará el martillo</p>
               </div>
 
-              <div className="md:col-span-3 mt-4 flex justify-end">
-                <Button variant="primary" type="submit" className="shadow-[0_0_15px_rgba(255,222,0,0.3)]">Iniciar Subasta</Button>
+              <div className="md:col-span-3 mt-4 flex justify-end gap-3">
+                <Button variant="ghost" type="button" onClick={() => {setShowForm(false); resetForm();}}>Cancelar</Button>
+                <Button variant="primary" type="submit" className="shadow-[0_0_15px_rgba(255,222,0,0.3)]">
+                  {editingAuctionId ? "Guardar Cambios" : "Iniciar Subasta"}
+                </Button>
               </div>
             </form>
           </div>
@@ -232,6 +310,7 @@ export default function AuctionsAdmin() {
                 <th className="p-4 text-right">Puja Actual</th>
                 <th className="p-4">Cierre</th>
                 <th className="p-4 text-center">Estado</th>
+                <th className="p-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -261,6 +340,16 @@ export default function AuctionsAdmin() {
                     </td>
                     <td className="p-4 text-center">
                       {statusBadge}
+                    </td>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button onClick={() => handleEdit(a)} className="p-1.5 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/40 transition-colors" title="Editar">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                        </button>
+                        <button onClick={() => handleDelete(a.id)} className="p-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/40 transition-colors" title="Eliminar">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

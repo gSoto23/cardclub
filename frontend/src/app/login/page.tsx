@@ -17,7 +17,7 @@ export default function LoginPage() {
       formData.append("username", email);
       formData.append("password", password);
 
-      const res = await fetch("http://127.0.0.1:8000/api/login", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -55,9 +55,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-brand-blue flex items-center justify-center p-4">
       <div className="bg-white/5 border border-white/10 p-8 rounded-2xl w-full max-w-md backdrop-blur-xl">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto bg-brand-yellow rounded-xl flex items-center justify-center transform -skew-x-12 mb-4 shadow-[0_0_20px_rgba(255,222,0,0.3)]">
-            <span className="text-brand-blue font-black text-2xl skew-x-12">CC</span>
-          </div>
+          <img src="/logo.png" alt="Card Club" className="w-16 h-16 mx-auto mb-4 object-contain drop-shadow-[0_0_15px_rgba(255,222,0,0.3)]" />
           <h1 className="text-3xl font-black text-white italic uppercase">Iniciar Sesión</h1>
           <p className="text-white/60 text-sm mt-2">Accede a tu cuenta de Card Club</p>
         </div>

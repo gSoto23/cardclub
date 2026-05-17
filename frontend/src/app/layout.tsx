@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   description: "Ecosistema digital y mercado para jugadores de TCG en Costa Rica.",
 };
 
+import { CartProvider } from "@/context/CartContext";
+import { Toaster } from "react-hot-toast";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,11 +33,24 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overflow-x-hidden`}
     >
       <body className="min-h-full flex flex-col overflow-x-hidden w-full max-w-full">
-        <Header />
-        <main className="flex-grow">
-          {children}
-        </main>
-        <Footer />
+        <CartProvider>
+          <Toaster 
+            position="top-right" 
+            toastOptions={{
+              style: {
+                background: '#1A1D2B',
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(8px)',
+              },
+            }}
+          />
+          <Header />
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer />
+        </CartProvider>
       </body>
     </html>
   );

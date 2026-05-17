@@ -29,9 +29,7 @@ export default function AdminDashboard() {
       {/* Admin Navbar */}
       <nav className="bg-black/40 border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-brand-yellow rounded transform -skew-x-12 flex items-center justify-center">
-            <span className="text-brand-blue font-black text-sm skew-x-12">CC</span>
-          </div>
+          <img src="/logo.png" alt="Card Club" className="w-8 h-8 object-contain" />
           <span className="text-white font-black italic tracking-widest uppercase">Admin Panel</span>
         </div>
         <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -70,6 +68,13 @@ export default function AdminDashboard() {
             <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">Ingresos y POS</h3>
             <p className="text-3xl font-black text-white group-hover:text-brand-yellow transition-colors">Ventas</p>
             <p className="text-white/40 text-xs mt-4">Punto de Venta e Historial</p>
+          </div>
+
+          {/* Tarjeta de Configuración */}
+          <div onClick={() => window.location.href = '/admin/config'} className="bg-white/5 border border-white/10 p-6 rounded-xl hover:border-brand-yellow/30 transition-colors cursor-pointer group md:col-span-2 lg:col-span-1">
+            <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">Sistema</h3>
+            <p className="text-3xl font-black text-white group-hover:text-brand-yellow transition-colors">Configuración</p>
+            <p className="text-white/40 text-xs mt-4">Redes sociales, FAQ y reglas</p>
           </div>
         </div>
       </div>

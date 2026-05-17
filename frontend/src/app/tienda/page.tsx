@@ -4,8 +4,7 @@ import { ProductCard } from "@/components/ui/ProductCard";
 // Server Component data fetching
 async function getProducts() {
   try {
-    // Evitar cache para ver los datos en tiempo real durante desarrollo
-    const res = await fetch("http://127.0.0.1:8000/api/products", { cache: 'no-store' });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`, { cache: 'no-store' });
     if (!res.ok) {
       throw new Error("Failed to fetch products");
     }
@@ -19,6 +18,19 @@ async function getProducts() {
 export default async function TiendaPage() {
   const products = await getProducts();
 
+  // Group products by category
+  const groupedProducts = products.reduce((acc: any, product: any) => {
+    const categoryName = product.category?.name || "Otros";
+    if (!acc[categoryName]) {
+      acc[categoryName] = [];
+    }
+    acc[categoryName].push(product);
+    return acc;
+  }, {});
+
+  // Sort categories to show specific ones first if we want, or just alphabetize
+  const categories = Object.keys(groupedProducts).sort();
+
   return (
     <div className="container mx-auto px-4 md:px-6 py-12">
       {/* Cabecera de la Tienda */}
@@ -31,16 +43,37 @@ export default async function TiendaPage() {
         </p>
       </div>
 
-      {/* Grid de Productos */}
       {products.length === 0 ? (
         <div className="text-center py-20 bg-white/5 rounded-xl border border-white/10">
           <p className="text-brand-yellow font-black text-xl mb-2">No hay productos disponibles</p>
           <p className="text-white/60">El backend no está corriendo o la base de datos está vacía.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product: any) => (
-            <ProductCard key={product.id} product={product} />
+        <div className="space-y-12">
+          {categories.map((category) => (
+            <section key={category} className="flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black text-white uppercase italic tracking-widest border-l-4 border-brand-yellow pl-4">
+                  {category}
+                </h2>
+                <div className="flex gap-2">
+                  {/* Flechas decorativas para indicar scroll */}
+                  <div className="hidden md:flex items-center gap-1 text-white/40">
+                    <span className="text-xs font-bold uppercase tracking-widest mr-2">Desliza</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contenedor Horizontal con Snap */}
+              <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+                {groupedProducts[category].map((product: any) => (
+                  <div key={product.id} className="snap-start shrink-0 w-[280px] md:w-[320px]">
+                    <ProductCard product={product} />
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

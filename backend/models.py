@@ -1,7 +1,9 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, DateTime, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from database import Base
+
+CR_TZ = timezone(timedelta(hours=-6))
 
 class User(Base):
     __tablename__ = "users"
@@ -11,6 +13,12 @@ class User(Base):
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
     role = Column(String, default="player") # admin, player
+    
+    # Nuevos campos de Perfil
+    full_name = Column(String, nullable=True)
+    nickname = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
+    whatsapp = Column(String, nullable=True)
 
     bids = relationship("Bid", back_populates="user")
     tournaments = relationship("TournamentRegistration", back_populates="user")
@@ -66,23 +74,40 @@ class Bid(Base):
     auction_id = Column(Integer, ForeignKey("auctions.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     amount = Column(Float)
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime, default=lambda: datetime.now(CR_TZ).replace(tzinfo=None))
 
     auction = relationship("Auction", back_populates="bids")
     user = relationship("User", back_populates="bids")
+
+class Championship(Base):
+    __tablename__ = "championships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    is_active = Column(Boolean, default=True)
+
+    tournaments = relationship("Tournament", back_populates="championship")
 
 class Tournament(Base):
     __tablename__ = "tournaments"
 
     id = Column(Integer, primary_key=True, index=True)
+    championship_id = Column(Integer, ForeignKey("championships.id"), nullable=True)
     name = Column(String, index=True)
     date = Column(DateTime)
     format = Column(String) # e.g. "Standard", "Modern", "Draft"
     entry_fee = Column(Float)
     max_players = Column(Integer)
     is_active = Column(Boolean, default=True)
+    is_virtual = Column(Boolean, default=False)
 
+    championship = relationship("Championship", back_populates="tournaments")
     registrations = relationship("TournamentRegistration", back_populates="tournament")
+
+    @property
+    def registered_count(self):
+        actual_count = len(self.registrations) if self.registrations else 0
+        return max(3, actual_count)
 
 class TournamentRegistration(Base):
     __tablename__ = "tournament_registrations"
@@ -92,10 +117,22 @@ class TournamentRegistration(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     payment_method = Column(String) # "Tarjeta", "SINPE", "Efectivo"
     status = Column(String, default="Pendiente") # "Pendiente", "Confirmado"
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime, default=lambda: datetime.now(CR_TZ).replace(tzinfo=None))
 
     tournament = relationship("Tournament", back_populates="registrations")
     user = relationship("User", back_populates="tournaments")
+
+class TournamentResult(Base):
+    __tablename__ = "tournament_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tournament_id = Column(Integer, ForeignKey("tournaments.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    points = Column(Integer, default=0)
+    position = Column(Integer, nullable=True)
+
+    tournament = relationship("Tournament")
+    user = relationship("User")
 
 class Sale(Base):
     __tablename__ = "sales"
@@ -106,7 +143,7 @@ class Sale(Base):
     payment_method = Column(String) # "Efectivo", "Tarjeta", "SINPE"
     status = Column(String, default="Completado") # "Completado", "Cancelado"
     sale_type = Column(String) # "POS", "Torneo", "Subasta"
-    sale_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    sale_date = Column(DateTime, default=lambda: datetime.now(CR_TZ).replace(tzinfo=None))
 
     items = relationship("SaleItem", back_populates="sale")
 
@@ -122,3 +159,10 @@ class SaleItem(Base):
     reference_id = Column(Integer, nullable=True)
 
     sale = relationship("Sale", back_populates="items")
+
+class SiteConfig(Base):
+    __tablename__ = "site_config"
+
+    key = Column(String, primary_key=True, index=True)
+    value = Column(String)
+    description = Column(String, nullable=True)

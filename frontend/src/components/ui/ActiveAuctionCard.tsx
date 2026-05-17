@@ -20,11 +20,11 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
   const [currentPrice, setCurrentPrice] = useState(initialAuction.current_price);
   const [wsStatus, setWsStatus] = useState("Conectando...");
   const [isFlashing, setIsFlashing] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>("");
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    // Conectar al WebSocket
-    ws.current = new WebSocket(`ws://127.0.0.1:8000/api/ws/auctions/${initialAuction.id}`);
+    ws.current = new WebSocket(`${process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws")}/api/ws/auctions/${initialAuction.id}`);
 
     ws.current.onopen = () => {
       setWsStatus("En Vivo");
@@ -34,7 +34,6 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
       const data = JSON.parse(event.data);
       if (data.type === "new_bid") {
         setCurrentPrice(data.new_price);
-        // Disparar animación
         setIsFlashing(true);
         setTimeout(() => setIsFlashing(false), 500);
       }
@@ -50,6 +49,30 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
       }
     };
   }, [initialAuction.id]);
+
+  // Countdown timer
+  useEffect(() => {
+    const updateCountdown = () => {
+      const end = new Date(initialAuction.end_time).getTime();
+      const now = new Date().getTime();
+      const distance = end - now;
+
+      if (distance < 0) {
+        setTimeLeft("Finalizado");
+        return;
+      }
+
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [initialAuction.end_time]);
 
   const formatCRC = (amount: number) => {
     return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);
@@ -67,58 +90,72 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
 
   return (
     <div className={`relative bg-white/5 border rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${isFlashing ? 'border-brand-yellow shadow-[0_0_30px_rgba(255,222,0,0.4)] scale-[1.02]' : 'border-white/10 hover:border-brand-yellow/30'}`}>
-      {/* Etiqueta de Estado */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-        <span className={`w-2 h-2 rounded-full ${wsStatus === 'En Vivo' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-        <span className="text-white text-xs font-bold uppercase tracking-widest">{wsStatus}</span>
+      
+      {/* IMAGEN DEL PRODUCTO (Prioridad) */}
+      <div className="relative w-full aspect-[4/3] bg-black/40 group overflow-hidden">
+        {/* Etiqueta de Estado */}
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+          <span className={`w-2 h-2 rounded-full ${wsStatus === 'En Vivo' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+          <span className="text-white text-xs font-bold uppercase tracking-widest">{wsStatus}</span>
+        </div>
+
+        {initialAuction.image_url ? (
+          <img 
+            src={initialAuction.image_url} 
+            alt={initialAuction.product_name} 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-white/20 text-xl font-black uppercase">NO IMAGE</div>
+        )}
+
+        {/* Countdown Overlay */}
+        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 to-transparent pt-12 pb-3 px-4 flex justify-between items-end">
+          <span className="text-white/80 text-xs font-bold uppercase tracking-widest">Termina en:</span>
+          <span className="text-brand-yellow font-mono text-xl font-black tracking-wider">{timeLeft}</span>
+        </div>
       </div>
 
-      <div className="flex p-4 gap-4 items-center border-b border-white/5">
-        <div className="w-20 h-20 rounded-md overflow-hidden bg-black/40 flex-shrink-0">
-          {initialAuction.image_url ? (
-            <img src={initialAuction.image_url} alt={initialAuction.product_name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white/20 text-xs">NO IMG</div>
+      {/* Contenido */}
+      <div className="p-5 flex flex-col flex-grow">
+        <h3 className="text-white font-black text-xl leading-tight mb-3">{initialAuction.product_name}</h3>
+        
+        {/* Tags */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {initialAuction.condition && (
+            <span className="bg-white/10 text-white text-xs font-bold px-2 py-1 rounded border border-white/20 uppercase tracking-wider">
+              {initialAuction.condition}
+            </span>
+          )}
+          {initialAuction.category_name && (
+            <span className="bg-purple-600/60 text-white text-xs font-bold px-2 py-1 rounded border border-white/20 uppercase tracking-wider">
+              {initialAuction.category_name}
+            </span>
+          )}
+          {initialAuction.is_foil && (
+            <span className="bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-500 text-brand-blue text-xs font-black px-2 py-1 rounded uppercase tracking-wider">
+              Foil
+            </span>
           )}
         </div>
-        <div>
-          <h3 className="text-white font-bold text-lg leading-tight">{initialAuction.product_name}</h3>
-          
-          <div className="flex flex-wrap gap-1 mt-1 mb-1">
-            {initialAuction.condition && (
-              <span className="bg-white/10 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-white/20 uppercase tracking-wider">
-                {initialAuction.condition}
-              </span>
-            )}
-            {initialAuction.category_name && (
-              <span className="bg-purple-600/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-white/20 uppercase tracking-wider">
-                {initialAuction.category_name}
-              </span>
-            )}
-            {initialAuction.is_foil && (
-              <span className="bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-500 text-brand-blue text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-                Foil
-              </span>
-            )}
+        
+        <div className="mt-auto border-t border-white/10 pt-4 flex flex-col items-center">
+          <p className="text-white/60 text-sm uppercase tracking-widest mb-1">Puja Actual</p>
+          <div className={`text-4xl font-black transition-colors duration-300 ${isFlashing ? 'text-brand-yellow' : 'text-white'}`}>
+            {formatCRC(currentPrice)}
           </div>
-          
-          <p className="text-brand-yellow text-[10px] font-black uppercase tracking-widest">Acaba pronto</p>
         </div>
       </div>
 
-      <div className="p-6 bg-gradient-to-b from-transparent to-brand-blue/50 flex-grow flex flex-col items-center justify-center">
-        <p className="text-white/60 text-sm uppercase tracking-widest mb-1">Puja Actual</p>
-        <div className={`text-5xl font-black transition-colors duration-300 ${isFlashing ? 'text-brand-yellow' : 'text-white'}`}>
-          {formatCRC(currentPrice)}
-        </div>
-      </div>
-
-      <div className="p-4 grid grid-cols-2 gap-3 bg-black/20">
-        <Button variant="ghost" className="w-full text-xs">
-          Ver Detalles
-        </Button>
-        <Button variant="primary" className="w-full shadow-[0_0_15px_rgba(255,222,0,0.2)]" onClick={placeBid}>
-          Pujar +₡1,000
+      {/* Botón de Puja (Full width) */}
+      <div className="p-4 bg-black/20">
+        <Button 
+          variant="primary" 
+          className="w-full py-4 text-lg shadow-[0_0_15px_rgba(255,222,0,0.2)]" 
+          onClick={placeBid}
+          disabled={timeLeft === "Finalizado"}
+        >
+          {timeLeft === "Finalizado" ? "Subasta Finalizada" : "Pujar +₡1,000"}
         </Button>
       </div>
     </div>

@@ -11,6 +11,8 @@ interface Tournament {
   entry_fee: number;
   max_players: number;
   is_active: boolean;
+  is_virtual: boolean;
+  registered_count: number;
 }
 
 export default function TorneosPage() {
@@ -23,6 +25,9 @@ export default function TorneosPage() {
   const [paymentMethod, setPaymentMethod] = useState("Efectivo");
   const [isRegistering, setIsRegistering] = useState(false);
 
+  // Filters
+  const [selectedMonth, setSelectedMonth] = useState<string>("Todos");
+
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (token) {
@@ -33,7 +38,7 @@ export default function TorneosPage() {
 
   const fetchTournaments = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/tournaments");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tournaments`);
       if (res.ok) {
         setTournaments(await res.json());
       }
@@ -49,7 +54,7 @@ export default function TorneosPage() {
     setIsRegistering(true);
     const token = localStorage.getItem("auth_token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/tournaments/${selectedTournament.id}/register`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tournaments/${selectedTournament.id}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -80,32 +85,67 @@ export default function TorneosPage() {
     return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);
   };
 
+  const getAvailableMonths = () => {
+    const months = new Set<string>();
+    tournaments.forEach(t => {
+      const dateObj = new Date(t.date);
+      const monthStr = dateObj.toLocaleString('es-CR', { month: 'long', year: 'numeric' });
+      months.add(monthStr);
+    });
+    return ["Todos", ...Array.from(months)];
+  };
+
+  const filteredTournaments = tournaments.filter(t => {
+    if (selectedMonth === "Todos") return true;
+    const monthStr = new Date(t.date).toLocaleString('es-CR', { month: 'long', year: 'numeric' });
+    return monthStr === selectedMonth;
+  });
+
   if (loading) return <div className="min-h-[70vh] flex items-center justify-center text-white">Cargando eventos...</div>;
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-12 min-h-[70vh]">
       {/* Cabecera */}
-      <div className="mb-12 border-b border-white/10 pb-8 text-center md:text-left">
+      <div className="mb-8 border-b border-white/10 pb-8 text-center md:text-left">
         <h1 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter mb-4 drop-shadow-[0_0_15px_rgba(255,222,0,0.2)]">
           Calendario <span className="text-brand-yellow">Competitivo</span>
         </h1>
-        <p className="text-white/60 text-lg max-w-2xl">
+        <p className="text-white/60 text-lg max-w-2xl mb-8">
           Participa en nuestros torneos oficiales y mide tus habilidades contra los mejores jugadores de Card Club. Reúne tu deck, confirma tu asistencia y lucha por los premios.
         </p>
+
+        {/* Filtro por Mes */}
+        {tournaments.length > 0 && (
+          <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
+            {getAvailableMonths().map(month => (
+              <button
+                key={month}
+                onClick={() => setSelectedMonth(month)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-bold text-sm uppercase tracking-widest transition-colors ${
+                  selectedMonth === month 
+                    ? "bg-brand-yellow text-brand-blue" 
+                    : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {month}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {tournaments.length === 0 ? (
+      {filteredTournaments.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center flex flex-col items-center justify-center min-h-[300px]">
           <p className="text-white/60 font-medium">No hay eventos programados en este momento.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {tournaments.map(t => {
+        <div className="flex overflow-x-auto lg:grid lg:grid-cols-2 gap-6 lg:gap-8 pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+          {filteredTournaments.map(t => {
             const dateObj = new Date(t.date);
             const isPast = dateObj < new Date();
 
             return (
-              <div key={t.id} className={`bg-black/20 border ${isPast ? 'border-white/5 opacity-50' : 'border-white/10 hover:border-brand-yellow/30'} rounded-2xl overflow-hidden flex flex-col md:flex-row transition-colors`}>
+              <div key={t.id} className={`bg-black/20 border ${isPast ? 'border-white/5 opacity-50' : 'border-white/10 hover:border-brand-yellow/30'} rounded-2xl overflow-hidden flex flex-col md:flex-row transition-colors min-w-[85vw] lg:min-w-0 snap-center`}>
                 
                 {/* Date Block */}
                 <div className="bg-brand-yellow/10 p-6 flex flex-col justify-center items-center min-w-[140px] border-b md:border-b-0 md:border-r border-white/10">
@@ -117,11 +157,37 @@ export default function TorneosPage() {
                 
                 {/* Info Block */}
                 <div className="p-6 flex-grow flex flex-col">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-white font-bold text-xl leading-tight">{t.name}</h3>
-                    <span className="bg-white/10 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded">
-                      {t.format}
-                    </span>
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <h3 className="text-white font-bold text-xl leading-tight flex-grow">{t.name}</h3>
+                    <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                      <span className="bg-white/10 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded text-center">
+                        {t.format}
+                      </span>
+                      {t.is_virtual ? (
+                        <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded text-center">
+                          VIRTUAL
+                        </span>
+                      ) : (
+                        <span className="bg-green-500/20 text-green-300 border border-green-500/30 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded text-center">
+                          EN TIENDA
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 bg-black/40 rounded-lg p-3 border border-white/5 flex items-center justify-between">
+                    <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Inscritos</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-full max-w-[100px] h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-brand-yellow transition-all" 
+                          style={{ width: `${Math.min(100, (t.registered_count / t.max_players) * 100)}%` }} 
+                        />
+                      </div>
+                      <span className="text-brand-yellow font-mono text-sm font-bold">
+                        {t.registered_count}<span className="text-white/40">/{t.max_players}</span>
+                      </span>
+                    </div>
                   </div>
                   
                   <div className="mt-auto pt-6 flex justify-between items-end">

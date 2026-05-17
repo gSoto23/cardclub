@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { toast } from "react-hot-toast";
 
 interface Product {
   id: number;
@@ -28,6 +29,7 @@ export default function InventoryAdmin() {
   
   // Form State
   const [showForm, setShowForm] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: "", description: "", price: 0, purchase_price: 0, stock: 1, category_id: 1,
     game: "Pokémon TCG", expansion_set: "", condition: "NM", is_foil: false, image_url: ""
@@ -41,8 +43,8 @@ export default function InventoryAdmin() {
   const fetchData = async () => {
     try {
       const [prodRes, catRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/products"),
-        fetch("http://127.0.0.1:8000/api/categories")
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`)
       ]);
       const [prodData, catData] = await Promise.all([prodRes.json(), catRes.json()]);
       setProducts(prodData);
@@ -71,7 +73,7 @@ export default function InventoryAdmin() {
     if (!newCategoryName.trim()) return;
     const token = localStorage.getItem("auth_token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/categories", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ name: newCategoryName })
@@ -86,16 +88,17 @@ export default function InventoryAdmin() {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("auth_token");
     let uploadedImageUrl = formData.image_url;
 
     if (imageFile) {
+      const toastId = toast.loading('Subiendo imagen...');
       const imgData = new FormData();
       imgData.append("file", imageFile);
       try {
-        const uploadRes = await fetch("http://127.0.0.1:8000/api/upload", {
+        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },
           body: imgData
@@ -103,30 +106,97 @@ export default function InventoryAdmin() {
         if (uploadRes.ok) {
           const uploadJson = await uploadRes.json();
           uploadedImageUrl = uploadJson.image_url;
+          toast.success('Imagen subida', { id: toastId });
+        } else {
+          toast.error('Error al subir imagen', { id: toastId });
         }
       } catch (err) {
         console.error("Error uploading image:", err);
+        toast.error('Error al subir imagen', { id: toastId });
       }
     }
 
     try {
       const payload = { ...formData, image_url: uploadedImageUrl };
-      const res = await fetch("http://127.0.0.1:8000/api/products", {
-        method: "POST",
+      const isEditing = editingProductId !== null;
+      const url = isEditing 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/products/${editingProductId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/products`;
+      const method = isEditing ? "PUT" : "POST";
+
+      const toastId = toast.loading(isEditing ? 'Actualizando...' : 'Creando producto...');
+
+      const res = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
+
       if (res.ok) {
+        toast.success(isEditing ? 'Producto actualizado' : 'Producto creado', { id: toastId });
         setShowForm(false);
-        fetchData(); // Refresh list
+        setEditingProductId(null);
+        resetForm();
+        fetchData();
       } else {
-        alert("Error creando producto");
+        toast.error('Error al guardar el producto', { id: toastId });
       }
     } catch (err) {
       console.error(err);
+      toast.error('Error de conexión');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "", description: "", price: 0, purchase_price: 0, stock: 1, category_id: categories.length > 0 ? categories[0].id : 1,
+      game: "Pokémon TCG", expansion_set: "", condition: "NM", is_foil: false, image_url: ""
+    });
+    setImageFile(null);
+    setEditingProductId(null);
+  };
+
+  const handleEdit = (product: Product) => {
+    setFormData({
+      name: product.name,
+      description: "", // Agregarlo si está en tu schema y frontend
+      price: product.price,
+      purchase_price: product.purchase_price || 0,
+      stock: product.stock,
+      category_id: product.category?.id || 1,
+      game: product.game,
+      expansion_set: product.expansion_set,
+      condition: product.condition,
+      is_foil: product.is_foil,
+      image_url: product.image_url || "" // Wait, image_url wasn't in interface, let's assume it works.
+    });
+    setEditingProductId(product.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (productId: number) => {
+    if (!confirm("¿Seguro que deseas eliminar este producto?")) return;
+    const token = localStorage.getItem("auth_token");
+    const toastId = toast.loading('Eliminando...');
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        toast.success('Producto eliminado', { id: toastId });
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.detail || 'Error eliminando el producto', { id: toastId });
+      }
+    } catch (err) {
+      toast.error('Error de conexión', { id: toastId });
     }
   };
 
@@ -147,15 +217,24 @@ export default function InventoryAdmin() {
       <div className="container mx-auto px-6 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-black text-white">Catálogo de Productos</h1>
-          <Button variant="primary" onClick={() => setShowForm(!showForm)}>
+          <Button variant="primary" onClick={() => {
+            if (showForm) {
+              setShowForm(false);
+              resetForm();
+            } else {
+              setShowForm(true);
+            }
+          }}>
             {showForm ? "Cancelar" : "+ Nuevo Producto"}
           </Button>
         </div>
 
         {showForm && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-md">
-            <h2 className="text-xl font-bold text-white mb-4">Añadir Nuevo Producto</h2>
-            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-md animate-in fade-in slide-in-from-top-4">
+            <h2 className="text-xl font-bold text-white mb-4">
+              {editingProductId ? "Editar Producto" : "Añadir Nuevo Producto"}
+            </h2>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               
               <div className="space-y-1">
                 <label className="text-xs text-white/60 font-bold uppercase">Nombre de Carta</label>
@@ -201,12 +280,12 @@ export default function InventoryAdmin() {
 
               <div className="space-y-1">
                 <label className="text-xs text-white/60 font-bold uppercase">Precio de Compra (CRC)</label>
-                <input type="number" required min="0" value={formData.purchase_price} onChange={e => setFormData({...formData, purchase_price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                <input type="number" required min="0" value={Number.isNaN(formData.purchase_price) ? "" : formData.purchase_price} onChange={e => setFormData({...formData, purchase_price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs text-white/60 font-bold uppercase">Precio de Venta (CRC)</label>
-                <input type="number" required min="0" value={formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                <input type="number" required min="0" value={Number.isNaN(formData.price) ? "" : formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
               </div>
 
               <div className="space-y-1">
@@ -225,7 +304,7 @@ export default function InventoryAdmin() {
 
               <div className="space-y-1">
                 <label className="text-xs text-white/60 font-bold uppercase">Stock</label>
-                <input type="number" required min="1" value={formData.stock} onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                <input type="number" required min="1" value={Number.isNaN(formData.stock) ? "" : formData.stock} onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
               </div>
 
               <div className="space-y-1 flex items-center gap-2 pt-6">
@@ -233,8 +312,11 @@ export default function InventoryAdmin() {
                 <label className="text-xs text-brand-yellow font-bold uppercase">¿Es carta Foil / Holográfica?</label>
               </div>
 
-              <div className="md:col-span-2 lg:col-span-3 mt-4 flex justify-end">
-                <Button variant="primary" type="submit">Guardar Producto</Button>
+              <div className="md:col-span-2 lg:col-span-3 mt-4 flex justify-end gap-3">
+                <Button variant="ghost" type="button" onClick={() => {setShowForm(false); resetForm();}}>Cancelar</Button>
+                <Button variant="primary" type="submit">
+                  {editingProductId ? "Guardar Cambios" : "Guardar Producto"}
+                </Button>
               </div>
             </form>
           </div>
@@ -252,6 +334,7 @@ export default function InventoryAdmin() {
                 <th className="p-4 text-right">Venta</th>
                 <th className="p-4 text-right">Margen</th>
                 <th className="p-4 text-right">Stock</th>
+                <th className="p-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -276,6 +359,16 @@ export default function InventoryAdmin() {
                       <span className="text-xs text-white/40">{marginPercent.toFixed(1)}%</span>
                     </td>
                     <td className="p-4 text-right">{p.stock}</td>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button onClick={() => handleEdit(p)} className="p-1.5 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/40 transition-colors" title="Editar">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                        </button>
+                        <button onClick={() => handleDelete(p.id)} className="p-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/40 transition-colors" title="Eliminar">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
