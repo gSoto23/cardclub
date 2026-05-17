@@ -18,6 +18,12 @@ CR_TZ = timezone(timedelta(hours=-6))
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
+app = FastAPI(
+    title="Card Club Backend API",
+    description="Backend para el ecosistema digital Card Club",
+    version="1.0.0"
+)
+
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(check_finished_auctions_loop())
@@ -49,13 +55,6 @@ async def check_finished_auctions_loop():
             print("Error in background auction checker:", e)
         finally:
             await asyncio.sleep(60)
-
-
-app = FastAPI(
-    title="Card Club Backend API",
-    description="Backend para el ecosistema digital Card Club",
-    version="1.0.0"
-)
 
 # Configuración de CORS
 origins = [
@@ -266,6 +265,24 @@ def get_finished_auctions(db: Session = Depends(get_db)):
             "winner": winner
         })
     return result
+
+@app.post("/api/auctions/request", tags=["Auctions"])
+def request_auction(
+    req: schemas.AuctionRequestCreate,
+    background_tasks: BackgroundTasks,
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    background_tasks.add_task(
+        email_sender.send_auction_request_email,
+        user_email=current_user.email,
+        user_name=current_user.full_name or current_user.nickname or "Usuario",
+        whatsapp=current_user.whatsapp or "No registrado",
+        card_name=req.card_name,
+        expansion=req.expansion,
+        condition=req.condition,
+        expected_price=req.expected_price
+    )
+    return {"status": "ok", "message": "Solicitud enviada exitosamente"}
 
 @app.post("/api/auctions", response_model=schemas.Auction, tags=["Auctions"])
 def create_auction(auction: schemas.AuctionCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):

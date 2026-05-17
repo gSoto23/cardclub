@@ -191,3 +191,37 @@ async def send_auction_won_email(to_email: str, user_name: str, product_name: st
     <p>Por favor, coordina el pago y entrega a través de nuestro WhatsApp oficial en las próximas 24 horas.</p>
     """
     await asyncio.to_thread(send_email, to_email, "¡Ganaste la subasta en Card Club!", content)
+
+async def send_auction_request_email(user_email: str, user_name: str, whatsapp: str, card_name: str, expansion: str, condition: str, expected_price: float):
+    # Enviar al administrador
+    admin_content = f"""
+    <div class="title">NUEVA SOLICITUD DE SUBASTA 📤</div>
+    <p>El usuario <strong>{user_name}</strong> quiere subastar una carta.</p>
+    <div class="highlight-box">
+        <strong>Vendedor:</strong> {user_name}<br>
+        <strong>Email:</strong> {user_email}<br>
+        <strong>WhatsApp:</strong> {whatsapp}<br><br>
+        <strong>Carta:</strong> {card_name}<br>
+        <strong>Expansión:</strong> {expansion}<br>
+        <strong>Condición:</strong> {condition}<br>
+        <strong>Precio Esperado:</strong> ₡{expected_price:,.2f}
+    </div>
+    <p>Por favor, contacta al cliente vía WhatsApp para coordinar la evaluación física de la carta.</p>
+    """
+    await asyncio.to_thread(send_email, "carlos@cardclubcr.com", f"Solicitud de Subasta: {card_name}", admin_content)
+
+    # Enviar copia al cliente
+    client_content = f"""
+    <div class="title">Solicitud Recibida 📦</div>
+    <p>Hola {user_name},</p>
+    <p>Hemos recibido tu solicitud para subastar <strong>{card_name}</strong> en Card Club.</p>
+    <div class="highlight-box">
+        <strong>Carta:</strong> {card_name}<br>
+        <strong>Expansión:</strong> {expansion}<br>
+        <strong>Condición:</strong> {condition}<br>
+        <strong>Precio Esperado:</strong> ₡{expected_price:,.2f}
+    </div>
+    <p><em>⚠️ Recuerda: Card Club cobra un porcentaje de comisión por venta. Para que tu carta sea subastada oficialmente, primero deberá ser entregada en tienda para su evaluación, custodia y fotografiado profesional.</em></p>
+    <p>Pronto te contactaremos por WhatsApp para coordinar la entrega.</p>
+    """
+    await asyncio.to_thread(send_email, user_email, f"Recibimos tu solicitud de subasta para {card_name}", client_content)

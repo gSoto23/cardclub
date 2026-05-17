@@ -141,6 +141,12 @@ class Championship(ChampionshipBase):
     class Config:
         orm_mode = True
 
+class AuctionRequestCreate(BaseModel):
+    card_name: str
+    expansion: str
+    condition: str
+    expected_price: float
+
 # --- TOURNAMENTS ---
 class TournamentBase(BaseModel):
     name: str

@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://cardclubcr.com"),
   title: "Card Club | Sealed is meant to be opened",
   description: "El mercado definitivo y la arena competitiva para verdaderos jugadores de TCG en Costa Rica. Compra, vende y domina el juego.",
   keywords: ["TCG Costa Rica", "Cartas Coleccionables", "Subastas TCG", "Torneos TCG", "Pokémon TCG Costa Rica", "Card Club"],

@@ -1,6 +1,8 @@
 import React from "react";
 import { ActiveAuctionCard } from "@/components/ui/ActiveAuctionCard";
 
+import { OfferAuctionButton } from "@/components/ui/OfferAuctionButton";
+
 async function getActiveAuctions() {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auctions/active`, { cache: 'no-store' });
@@ -30,17 +32,21 @@ export default async function SubastasPage() {
   return (
     <div className="container mx-auto px-4 md:px-6 py-12 min-h-[70vh]">
       {/* Cabecera de Subastas */}
-      <div className="mb-12 border-b border-white/10 pb-8 text-center md:text-left">
-        <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-brand-yellow/10 border border-brand-yellow/30 text-brand-yellow text-xs font-black tracking-[0.2em] uppercase backdrop-blur-sm mb-6 shadow-[0_0_15px_rgba(255,222,0,0.15)]">
-          <span className="w-2 h-2 rounded-full bg-brand-yellow animate-ping" />
-          En Vivo y Programadas
+      <div className="mb-12 border-b border-white/10 pb-8 flex flex-col md:flex-row justify-between items-center text-center md:text-left">
+        <div>
+          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-brand-yellow/10 border border-brand-yellow/30 text-brand-yellow text-xs font-black tracking-[0.2em] uppercase backdrop-blur-sm mb-6 shadow-[0_0_15px_rgba(255,222,0,0.15)]">
+            <span className="w-2 h-2 rounded-full bg-brand-yellow animate-ping" />
+            En Vivo y Programadas
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter mb-4 drop-shadow-[0_0_15px_rgba(255,222,0,0.2)]">
+            Arena de <span className="text-brand-yellow">Subastas</span>
+          </h1>
+          <p className="text-white/60 text-lg max-w-2xl">
+            Puja en tiempo real por las cartas más raras y exclusivas. Las ofertas se actualizan al instante para todos los jugadores.
+          </p>
         </div>
-        <h1 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter mb-4 drop-shadow-[0_0_15px_rgba(255,222,0,0.2)]">
-          Arena de <span className="text-brand-yellow">Subastas</span>
-        </h1>
-        <p className="text-white/60 text-lg max-w-2xl">
-          Puja en tiempo real por las cartas más raras y exclusivas. Las ofertas se actualizan al instante para todos los jugadores.
-        </p>
+        
+        <OfferAuctionButton />
       </div>
 
       {/* Slider de Subastas Activas */}
