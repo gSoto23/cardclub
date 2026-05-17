@@ -63,6 +63,7 @@ class Auction(Base):
     current_price = Column(Float)
     end_time = Column(DateTime)
     is_active = Column(Boolean, default=True)
+    winner_notified = Column(Boolean, default=False)
 
     product = relationship("Product", back_populates="auctions")
     bids = relationship("Bid", back_populates="auction")

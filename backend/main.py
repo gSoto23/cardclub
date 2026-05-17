@@ -1,11 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import models, schemas, auth
 import os
+import email_sender
+import asyncio
 import shutil
 import uuid
-from database import engine, get_db
+from database import engine, get_db, SessionLocal
 from sqlalchemy.orm import Session
 from typing import List
 from fastapi.security import OAuth2PasswordRequestForm
@@ -15,6 +17,39 @@ CR_TZ = timezone(timedelta(hours=-6))
 
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(check_finished_auctions_loop())
+
+async def check_finished_auctions_loop():
+    while True:
+        try:
+            db = SessionLocal()
+            now = datetime.now(CR_TZ).replace(tzinfo=None)
+            closed_auctions = db.query(models.Auction).filter(
+                models.Auction.end_time <= now,
+                models.Auction.winner_notified == False
+            ).all()
+            for auction in closed_auctions:
+                if auction.bids:
+                    highest_bid = max(auction.bids, key=lambda b: b.amount)
+                    winner = highest_bid.user
+                    if winner:
+                        await email_sender.send_auction_won_email(
+                            to_email=winner.email,
+                            user_name=winner.nickname or winner.full_name or "Ganador",
+                            product_name=auction.product.name,
+                            winning_price=highest_bid.amount
+                        )
+                auction.winner_notified = True
+                db.commit()
+            db.close()
+        except Exception as e:
+            print("Error in background auction checker:", e)
+        finally:
+            await asyncio.sleep(60)
+
 
 app = FastAPI(
     title="Card Club Backend API",
@@ -348,7 +383,7 @@ def delete_tournament(tournament_id: int, db: Session = Depends(get_db), current
         raise HTTPException(status_code=400, detail="No se pudo eliminar el torneo")
 
 @app.post("/api/tournaments/{tournament_id}/register", response_model=schemas.TournamentRegistration, tags=["Tournaments"])
-def register_for_tournament(tournament_id: int, payload: schemas.TournamentRegistrationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def register_for_tournament(tournament_id: int, payload: schemas.TournamentRegistrationCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Check if already registered
     existing = db.query(models.TournamentRegistration).filter(
         models.TournamentRegistration.tournament_id == tournament_id,
@@ -367,6 +402,15 @@ def register_for_tournament(tournament_id: int, payload: schemas.TournamentRegis
     db.add(db_registration)
     db.commit()
     db.refresh(db_registration)
+    
+    background_tasks.add_task(
+        email_sender.send_tournament_email,
+        to_email=current_user.email,
+        user_name=current_user.nickname or current_user.full_name or "Participante",
+        tournament_name=db_registration.tournament.name,
+        date_str=db_registration.tournament.date.strftime("%Y-%m-%d %H:%M"),
+        entry_fee=db_registration.tournament.entry_fee
+    )
     return db_registration
 
 @app.get("/api/users/me/tournaments", tags=["Users"])
@@ -580,6 +624,16 @@ def create_sale(sale: schemas.SaleCreate, db: Session = Depends(get_db), current
     
     db.commit()
     db.refresh(db_sale)
+
+    background_tasks.add_task(
+        email_sender.send_purchase_email,
+        to_email=current_user.email,
+        user_name=current_user.nickname or current_user.full_name or "Coleccionista",
+        total=calculated_total,
+        items_count=len(sale.items),
+        payment_method=sale.payment_method
+    )
+
     return db_sale
 
 @app.get("/api/approvals/pending", tags=["Sales", "Tournaments"])
@@ -672,7 +726,7 @@ def get_sales(
     return query.offset(skip).limit(limit).all()
 
 @app.post("/api/checkout", response_model=schemas.Sale, tags=["Sales"])
-def process_checkout(sale: schemas.SaleCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def process_checkout(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Calculate real total amount and verify stock
     calculated_total = 0.0
     for item in sale.items:
@@ -712,6 +766,16 @@ def process_checkout(sale: schemas.SaleCreate, db: Session = Depends(get_db), cu
     
     db.commit()
     db.refresh(db_sale)
+
+    background_tasks.add_task(
+        email_sender.send_purchase_email,
+        to_email=current_user.email,
+        user_name=current_user.nickname or current_user.full_name or "Coleccionista",
+        total=calculated_total,
+        items_count=len(sale.items),
+        payment_method=sale.payment_method
+    )
+
     return db_sale
 
 # --- WEBSOCKETS PARA SUBASTAS ---
@@ -763,6 +827,10 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
             auction = db.query(models.Auction).filter(models.Auction.id == auction_id).with_for_update().first()
             
             if auction and auction.is_active and new_amount > auction.current_price:
+                previous_bidder_id = None
+                if auction.bids:
+                    highest_bid = max(auction.bids, key=lambda b: b.amount)
+                    previous_bidder_id = highest_bid.user_id
                 # Actualizar precio
                 auction.current_price = new_amount
                 
@@ -770,6 +838,17 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                 new_bid = models.Bid(auction_id=auction_id, user_id=user_id, amount=new_amount)
                 db.add(new_bid)
                 db.commit()
+                
+                if previous_bidder_id and previous_bidder_id != user_id:
+                    previous_user = db.query(models.User).filter(models.User.id == previous_bidder_id).first()
+                    if previous_user:
+                        asyncio.create_task(email_sender.send_outbid_email(
+                            to_email=previous_user.email,
+                            user_name=previous_user.nickname or previous_user.full_name or "Coleccionista",
+                            product_name=auction.product.name,
+                            new_price=new_amount,
+                            auction_id=auction_id
+                        ))
                 
                 # Broadcast a todos los conectados
                 await manager.broadcast(json.dumps({

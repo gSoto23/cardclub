@@ -38,3 +38,4 @@ alembic.ini
 *.sqlite3
 backend/static/uploads/
 backend/cardclub.db
+backend/setup_admin.py

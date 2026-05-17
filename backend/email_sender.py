@@ -1,0 +1,193 @@
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+import asyncio
+
+# --- CONFIGURACIÓN SMTP ---
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 465))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:3000")
+
+# --- PLANTILLA BASE (HTML) ---
+BASE_HTML = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }}
+        .header {{
+            background-color: #facc15;
+            padding: 20px;
+            text-align: center;
+        }}
+        .header h1 {{
+            color: #020617;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }}
+        .content {{
+            padding: 30px;
+            line-height: 1.6;
+        }}
+        .title {{
+            color: #facc15;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }}
+        .highlight-box {{
+            background-color: rgba(250, 204, 21, 0.1);
+            border-left: 4px solid #facc15;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }}
+        .button {{
+            display: inline-block;
+            background-color: #facc15;
+            color: #020617 !important;
+            padding: 12px 24px;
+            text-decoration: none;
+            font-weight: 900;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }}
+        .footer {{
+            background-color: #020617;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            border-top: 1px solid #1e293b;
+        }}
+        .footer a {{
+            color: #facc15;
+            text-decoration: none;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Card Club</h1>
+        </div>
+        <div class="content">
+            {content}
+        </div>
+        <div class="footer">
+            <p>Este es un correo automático de Card Club Costa Rica.</p>
+            <p><a href="{api_base_url}">Visitar la tienda</a></p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+def send_email(to_email: str, subject: str, html_content: str):
+    if not SMTP_USER or not SMTP_PASSWORD:
+        print(f"AVISO: Correos desactivados. Faltan credenciales SMTP. Simulado para: {to_email} - {subject}")
+        return
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"Card Club <{SMTP_USER}>"
+    msg["To"] = to_email
+
+    final_html = BASE_HTML.format(content=html_content, api_base_url=API_BASE_URL)
+    part = MIMEText(final_html, "html")
+    msg.attach(part)
+
+    try:
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.sendmail(SMTP_USER, to_email, msg.as_string())
+        else:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.sendmail(SMTP_USER, to_email, msg.as_string())
+    except Exception as e:
+        print(f"Error enviando correo a {to_email}: {e}")
+
+# Funciones Wrappers Asincrónicas para BackgroundTasks
+
+async def send_purchase_email(to_email: str, user_name: str, total: float, items_count: int, payment_method: str):
+    content = f"""
+    <div class="title">¡Compra Confirmada! 🎉</div>
+    <p>Hola {user_name},</p>
+    <p>Hemos recibido tu pedido exitosamente. Estamos preparándolo para ti.</p>
+    <div class="highlight-box">
+        <strong>Detalle del Pedido:</strong><br>
+        Artículos: {items_count}<br>
+        Total: ₡{total:,.2f}<br>
+        Método de Pago: {payment_method}
+    </div>
+    <p>Si elegiste SINPE o Transferencia, recuerda enviar el comprobante a nuestro WhatsApp si aún no lo has hecho.</p>
+    """
+    await asyncio.to_thread(send_email, to_email, "Confirmación de Compra - Card Club", content)
+
+async def send_tournament_email(to_email: str, user_name: str, tournament_name: str, date_str: str, entry_fee: float):
+    content = f"""
+    <div class="title">¡Inscripción Exitosa! ⚔️</div>
+    <p>Hola {user_name},</p>
+    <p>Tu asiento está reservado. Prepárate para el combate.</p>
+    <div class="highlight-box">
+        <strong>Torneo:</strong> {tournament_name}<br>
+        <strong>Fecha:</strong> {date_str}<br>
+        <strong>Entrada:</strong> ₡{entry_fee:,.2f}
+    </div>
+    <p>Asegúrate de traer tu deck listo y llegar al menos 15 minutos antes de la hora de inicio.</p>
+    """
+    await asyncio.to_thread(send_email, to_email, f"Inscripción Confirmada: {tournament_name}", content)
+
+async def send_outbid_email(to_email: str, user_name: str, product_name: str, new_price: float, auction_id: int):
+    content = f"""
+    <div class="title">¡Alguien superó tu puja! ⚠️</div>
+    <p>Hola {user_name},</p>
+    <p>¡Te están quitando esa carta! Alguien acaba de ofrecer <strong>₡{new_price:,.2f}</strong> por <strong>{product_name}</strong>.</p>
+    <p>Aún estás a tiempo de recuperarla.</p>
+    <div style="text-align: center;">
+        <a href="{API_BASE_URL}/subastas" class="button">PUJAR NUEVAMENTE</a>
+    </div>
+    """
+    await asyncio.to_thread(send_email, to_email, "¡Te han superado en la subasta!", content)
+
+async def send_auction_won_email(to_email: str, user_name: str, product_name: str, winning_price: float):
+    content = f"""
+    <div class="title">¡Subasta Ganada! 🏆</div>
+    <p>Hola {user_name},</p>
+    <p>¡Felicidades! Eres el ganador indiscutible de la subasta por <strong>{product_name}</strong>.</p>
+    <div class="highlight-box">
+        <strong>Precio Ganador:</strong> ₡{winning_price:,.2f}
+    </div>
+    <p>Por favor, coordina el pago y entrega a través de nuestro WhatsApp oficial en las próximas 24 horas.</p>
+    """
+    await asyncio.to_thread(send_email, to_email, "¡Ganaste la subasta en Card Club!", content)
