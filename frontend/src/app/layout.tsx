@@ -27,9 +27,9 @@ export const metadata: Metadata = {
     siteName: "Card Club",
     images: [
       {
-        url: "/logo.png",
-        width: 1200,
-        height: 630,
+        url: "/fav/ms-icon-310x310.png",
+        width: 310,
+        height: 310,
         alt: "Card Club Logo",
       },
     ],
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Card Club | TCG en Costa Rica",
     description: "Compra, vende y compite en el mejor ecosistema de TCG.",
-    images: ["/logo.png"],
+    images: ["/fav/ms-icon-310x310.png"],
   },
   icons: {
     icon: [
