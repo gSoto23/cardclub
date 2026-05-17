@@ -55,7 +55,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-brand-blue flex items-center justify-center p-4">
       <div className="bg-white/5 border border-white/10 p-8 rounded-2xl w-full max-w-md backdrop-blur-xl">
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="Card Club" className="w-16 h-16 mx-auto mb-4 object-contain drop-shadow-[0_0_15px_rgba(255,222,0,0.3)]" />
+          <img src="/logo.png" alt="Card Club" className="h-[70px] w-auto mx-auto mb-4 object-contain drop-shadow-[0_0_15px_rgba(255,222,0,0.3)]" />
           <h1 className="text-3xl font-black text-white italic uppercase">Iniciar Sesión</h1>
           <p className="text-white/60 text-sm mt-2">Accede a tu cuenta de Card Club</p>
         </div>
