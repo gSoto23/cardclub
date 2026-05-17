@@ -29,7 +29,6 @@ export default function AdminDashboard() {
       {/* Admin Navbar */}
       <nav className="bg-black/40 border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Card Club" className="w-8 h-8 object-contain" />
           <span className="text-white font-black italic tracking-widest uppercase">Admin Panel</span>
         </div>
         <Button variant="ghost" size="sm" onClick={handleLogout}>
