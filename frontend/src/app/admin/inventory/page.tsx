@@ -14,6 +14,7 @@ interface Product {
   price: number;
   purchase_price: number;
   stock: number;
+  image_url?: string;
   category?: Category;
 }
 
