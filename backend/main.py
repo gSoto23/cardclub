@@ -291,12 +291,15 @@ def request_auction(
 
 @app.post("/api/auctions", response_model=schemas.Auction, tags=["Auctions"])
 def create_auction(auction: schemas.AuctionCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    start_t = auction.start_time.astimezone(CR_TZ).replace(tzinfo=None) if auction.start_time.tzinfo else auction.start_time
+    end_t = auction.end_time.astimezone(CR_TZ).replace(tzinfo=None) if auction.end_time.tzinfo else auction.end_time
+    
     db_auction = models.Auction(
         product_id=auction.product_id,
         start_price=auction.start_price,
-        start_time=auction.start_time,
+        start_time=start_t,
         current_price=auction.start_price, # El precio actual inicial es el precio de salida
-        end_time=auction.end_time,
+        end_time=end_t,
         is_active=True
     )
     db.add(db_auction)
@@ -311,6 +314,11 @@ def update_auction(auction_id: int, auction_update: schemas.AuctionUpdate, db: S
         raise HTTPException(status_code=404, detail="Subasta no encontrada")
     
     update_data = auction_update.dict(exclude_unset=True)
+    if 'start_time' in update_data and update_data['start_time']:
+        update_data['start_time'] = update_data['start_time'].astimezone(CR_TZ).replace(tzinfo=None) if update_data['start_time'].tzinfo else update_data['start_time']
+    if 'end_time' in update_data and update_data['end_time']:
+        update_data['end_time'] = update_data['end_time'].astimezone(CR_TZ).replace(tzinfo=None) if update_data['end_time'].tzinfo else update_data['end_time']
+        
     for key, value in update_data.items():
         setattr(db_auction, key, value)
         
