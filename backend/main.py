@@ -615,7 +615,7 @@ def get_global_ranking(championship_id: Optional[int] = None, db: Session = Depe
     return response
 
 @app.post("/api/sales", response_model=schemas.Sale, tags=["Sales"])
-def create_sale(sale: schemas.SaleCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+def create_sale(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
     db_sale = models.Sale(
         user_id=sale.user_id,
         total_amount=sale.total_amount,
@@ -647,14 +647,17 @@ def create_sale(sale: schemas.SaleCreate, db: Session = Depends(get_db), current
     db.commit()
     db.refresh(db_sale)
 
-    background_tasks.add_task(
-        email_sender.send_purchase_email,
-        to_email=current_user.email,
-        user_name=current_user.nickname or current_user.full_name or "Coleccionista",
-        total=calculated_total,
-        items_count=len(sale.items),
-        payment_method=sale.payment_method
-    )
+    if sale.user_id:
+        user = db.query(models.User).filter(models.User.id == sale.user_id).first()
+        if user and user.email:
+            background_tasks.add_task(
+                email_sender.send_purchase_email,
+                to_email=user.email,
+                user_name=user.nickname or user.full_name or "Coleccionista",
+                total=sale.total_amount,
+                items_count=len(sale.items),
+                payment_method=sale.payment_method
+            )
 
     return db_sale
 
