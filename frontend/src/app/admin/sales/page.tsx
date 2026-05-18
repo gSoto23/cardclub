@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { toast } from "react-hot-toast";
 
 interface Product {
   id: number;
@@ -135,11 +136,11 @@ export default function SalesAdmin() {
       });
 
       if (res.ok) {
-        alert("Pago confirmado");
+        toast.success("Pago confirmado");
         fetchApprovals(); // Refresh approvals
         fetchSales(); // Refresh history
       } else {
-        alert("Error confirmando pago");
+        toast.error("Error confirmando pago");
       }
     } catch (err) {
       console.error(err);
@@ -155,7 +156,7 @@ export default function SalesAdmin() {
     if (qtyToAdd <= 0) return;
 
     if (product.stock <= 0) {
-      alert("No hay stock disponible.");
+      toast.error("No hay stock disponible.");
       return;
     }
     
@@ -163,7 +164,7 @@ export default function SalesAdmin() {
     const newTotalQty = (existing ? existing.quantity : 0) + qtyToAdd;
     
     if (newTotalQty > product.stock) {
-      alert(`Stock insuficiente. Solo quedan ${product.stock} disponibles.`);
+      toast.error(`Stock insuficiente. Solo quedan ${product.stock} disponibles.`);
       return;
     }
 
@@ -211,12 +212,12 @@ export default function SalesAdmin() {
       });
       
       if (res.ok) {
-        alert("Venta registrada exitosamente");
+        toast.success("Venta registrada exitosamente");
         setCart([]);
         fetchProducts(); // Refresh stock
         fetchSales(); // Refresh history
       } else {
-        alert("Error al procesar la venta");
+        toast.error("Error al procesar la venta");
       }
     } catch (err) {
       console.error(err);
