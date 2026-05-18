@@ -73,9 +73,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Directorios absolutos para archivos estáticos
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
+
 # Servir archivos estáticos
-os.makedirs("static/uploads", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/health", tags=["Health Check"])
 async def health_check():
@@ -86,7 +91,7 @@ async def health_check():
 async def upload_image(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     file_extension = os.path.splitext(file.filename)[1]
     file_name = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join("static", "uploads", file_name)
+    file_path = os.path.join(UPLOADS_DIR, file_name)
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
