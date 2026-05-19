@@ -15,23 +15,32 @@ from datetime import timedelta, datetime, timezone
 
 CR_TZ = timezone(timedelta(hours=-6))
 
+import sqlite3
+import os
+from database import SQLALCHEMY_DATABASE_URL
+
+try:
+    if SQLALCHEMY_DATABASE_URL.startswith("sqlite:///"):
+        db_path = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "")
+        if os.path.exists(db_path):
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute("ALTER TABLE products ADD COLUMN is_auction_only BOOLEAN DEFAULT 0;")
+            except Exception as e:
+                print("is_auction_only:", e)
+                
+            try:
+                conn.execute("ALTER TABLE products ADD COLUMN is_pos_only BOOLEAN DEFAULT 0;")
+            except Exception as e:
+                print("is_pos_only:", e)
+                
+            conn.commit()
+            conn.close()
+except Exception as e:
+    print("Migración falló:", e)
+
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
-
-from sqlalchemy import text
-
-# Auto-migración para añadir columnas nuevas
-try:
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE products ADD COLUMN is_auction_only BOOLEAN DEFAULT 0;"))
-except Exception as e:
-    print("Migración is_auction_only omitida:", e)
-
-try:
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE products ADD COLUMN is_pos_only BOOLEAN DEFAULT 0;"))
-except Exception as e:
-    print("Migración is_pos_only omitida:", e)
 
 app = FastAPI(
     title="Card Club Backend API",

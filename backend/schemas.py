@@ -60,8 +60,8 @@ class ProductBase(BaseModel):
     language: str = "EN"
     is_foil: bool = False
     image_url: Optional[str] = None
-    is_auction_only: bool = False
-    is_pos_only: bool = False
+    is_auction_only: Optional[bool] = False
+    is_pos_only: Optional[bool] = False
 
 class ProductCreate(ProductBase):
     category_id: int

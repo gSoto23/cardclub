@@ -39,3 +39,11 @@ alembic.ini
 backend/static/uploads/
 backend/cardclub.db
 backend/setup_admin.py
+
+# Scratch & Test files
+test_*.py
+test*.py
+*test*.js
+*test*.ts
+scratch*.py
+*.scratch.*
