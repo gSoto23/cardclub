@@ -1048,8 +1048,10 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
             if auction and auction.is_active and new_amount > auction.current_price:
                 previous_bidder_id = None
                 product_name = auction.product.name if auction.product else "Producto en Subasta"
-                if auction.bids:
-                    highest_bid = max(auction.bids, key=lambda b: b.amount)
+                
+                # Fetch highest bid explicitly to bypass long-lived session stale relationship cache
+                highest_bid = db.query(models.Bid).filter(models.Bid.auction_id == auction_id).order_by(models.Bid.amount.desc()).first()
+                if highest_bid:
                     previous_bidder_id = highest_bid.user_id
                 # Actualizar precio
                 auction.current_price = new_amount
