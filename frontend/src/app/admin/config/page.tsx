@@ -39,7 +39,14 @@ export default function ConfigAdmin() {
   };
 
   const handleInputChange = (key: string, value: string) => {
-    setConfigs(configs.map(c => c.key === key ? { ...c, value } : c));
+    setConfigs(prev => {
+      const exists = prev.find(c => c.key === key);
+      if (exists) {
+        return prev.map(c => c.key === key ? { ...c, value } : c);
+      } else {
+        return [...prev, { key, value, description: "" }];
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
