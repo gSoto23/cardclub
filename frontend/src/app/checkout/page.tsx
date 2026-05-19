@@ -10,14 +10,32 @@ export default function CheckoutPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Tarjeta");
-  const WHATSAPP_NUMBER = "+50688111178";
+  const [whatsappNumber, setWhatsappNumber] = useState("+50688111178");
+  const [sinpeNumber, setSinpeNumber] = useState("88111178");
 
-  // Verificar sesión
+  // Verificar sesión y cargar config
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
       window.location.href = "/login";
     }
+
+    // Cargar config global
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/config`)
+      .then(res => res.json())
+      .then((data: any[]) => {
+        const wa = data.find(c => c.key === 'social_whatsapp')?.value;
+        const sinpe = data.find(c => c.key === 'sinpe_number')?.value;
+        
+        if (wa) {
+          // Extraer número de link wa.me o usar valor directo si es número
+          const match = wa.match(/wa\.me\/(\d+)/);
+          if (match) setWhatsappNumber("+" + match[1]);
+          else if (wa.includes('+')) setWhatsappNumber(wa);
+        }
+        if (sinpe) setSinpeNumber(sinpe);
+      })
+      .catch(console.error);
   }, []);
 
   const formatCRC = (amount: number) => {
@@ -85,10 +103,10 @@ export default function CheckoutPage() {
                 Has seleccionado pago por SINPE. Tu pedido está en estado <strong className="text-orange-400">Pendiente</strong>.
               </p>
               <p className="text-white text-sm font-bold">
-                Por favor transfiere al SINPE Móvil <strong>{WHATSAPP_NUMBER.replace('+506', '')}</strong> a nombre de CARLOS HIDALGO SANCHEZ y contáctanos a nuestro WhatsApp para enviar el comprobante de pago y liberar tus cartas:
+                Por favor transfiere al SINPE Móvil <strong>{sinpeNumber}</strong> y contáctanos a nuestro WhatsApp para enviar el comprobante de pago y liberar tus cartas:
               </p>
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER.replace('+', '')}?text=Hola, acabo de realizar un pedido en Card Club. Adjunto mi comprobante de SINPE.`}
+                href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=Hola, acabo de realizar un pedido en Card Club. Adjunto mi comprobante de SINPE.`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-block mt-4 bg-green-500 text-white font-bold py-2 px-6 rounded-full hover:bg-green-600 transition-colors"

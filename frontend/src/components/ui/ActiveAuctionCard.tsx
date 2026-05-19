@@ -21,6 +21,7 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
   const [wsStatus, setWsStatus] = useState("Conectando...");
   const [isFlashing, setIsFlashing] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
+  const [selectedIncrement, setSelectedIncrement] = useState<number>(1000);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -80,7 +81,7 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
 
   const placeBid = () => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      const newBid = currentPrice + 1000;
+      const newBid = currentPrice + selectedIncrement;
       ws.current.send(JSON.stringify({
         user_id: 1,
         amount: newBid
@@ -147,15 +148,28 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
         </div>
       </div>
 
-      {/* Botón de Puja (Full width) */}
-      <div className="p-4 bg-black/20">
+      {/* Botones de incremento y Puja */}
+      <div className="p-4 bg-black/20 flex flex-col gap-3">
+        {timeLeft !== "Finalizado" && (
+          <div className="flex gap-2 justify-between">
+            {[1000, 5000, 10000].map((amount) => (
+              <button
+                key={amount}
+                onClick={() => setSelectedIncrement(amount)}
+                className={`flex-1 py-2 rounded font-bold text-sm transition-all border ${selectedIncrement === amount ? 'bg-brand-yellow text-black border-brand-yellow shadow-[0_0_10px_rgba(255,222,0,0.3)]' : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10 hover:border-white/20'}`}
+              >
+                +₡{amount / 1000}k
+              </button>
+            ))}
+          </div>
+        )}
         <Button 
           variant="primary" 
           className="w-full py-4 text-lg shadow-[0_0_15px_rgba(255,222,0,0.2)]" 
           onClick={placeBid}
           disabled={timeLeft === "Finalizado"}
         >
-          {timeLeft === "Finalizado" ? "Subasta Finalizada" : "Pujar +₡1,000"}
+          {timeLeft === "Finalizado" ? "Subasta Finalizada" : `Confirmar Puja +${formatCRC(selectedIncrement)}`}
         </Button>
       </div>
     </div>

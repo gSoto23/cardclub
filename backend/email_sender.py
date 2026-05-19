@@ -205,6 +205,21 @@ async def send_auction_won_email(to_email: str, user_name: str, product_name: st
     """
     await asyncio.to_thread(send_email, to_email, "¡Ganaste la subasta en Card Club!", content)
 
+async def send_auction_warning_email(to_email: str, user_name: str, product_name: str, current_price: float):
+    content = f"""
+    <div class="title">¡Queda 1 Hora! ⏳</div>
+    <p>Hola {user_name},</p>
+    <p>La subasta por <strong>{product_name}</strong> está a punto de finalizar. ¡Solo queda 1 hora!</p>
+    <div class="highlight-box">
+        <strong>Precio Actual:</strong> ₡{current_price:,.2f}
+    </div>
+    <p>No dejes que te la quiten en el último minuto. Entra ahora para asegurar tu victoria.</p>
+    <div style="text-align: center;">
+        <a href="{API_BASE_URL}/subastas" class="button">IR A LA SUBASTA</a>
+    </div>
+    """
+    await asyncio.to_thread(send_email, to_email, f"¡Queda 1 hora para ganar {product_name}!", content)
+
 async def send_auction_request_email(user_email: str, user_name: str, whatsapp: str, card_name: str, expansion: str, condition: str, expected_price: float):
     # Enviar al administrador
     admin_content = f"""

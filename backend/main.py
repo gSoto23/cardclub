@@ -50,6 +50,30 @@ async def check_finished_auctions_loop():
                         )
                 auction.winner_notified = True
                 db.commit()
+
+            # Warning 1 hora
+            warning_time = now + timedelta(hours=1)
+            warning_auctions = db.query(models.Auction).filter(
+                models.Auction.end_time <= warning_time,
+                models.Auction.end_time > now,
+                models.Auction.warning_1h_notified == False,
+                models.Auction.is_active == True
+            ).all()
+            
+            for auction in warning_auctions:
+                if auction.bids:
+                    unique_bidders = {bid.user for bid in auction.bids if bid.user}
+                    current_price = max((b.amount for b in auction.bids), default=auction.start_price)
+                    for bidder in unique_bidders:
+                        await email_sender.send_auction_warning_email(
+                            to_email=bidder.email,
+                            user_name=bidder.nickname or bidder.full_name or "Jugador",
+                            product_name=auction.product.name,
+                            current_price=current_price
+                        )
+                auction.warning_1h_notified = True
+                db.commit()
+
             db.close()
         except Exception as e:
             print("Error in background auction checker:", e)

@@ -3,7 +3,7 @@ import React from "react";
 
 async function getConfig() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/config`, { next: { revalidate: 60 } });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/config`, { cache: 'no-store' });
     if (!res.ok) return [];
     return await res.json();
   } catch (err) {
