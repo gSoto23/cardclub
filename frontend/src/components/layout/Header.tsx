@@ -58,6 +58,9 @@ export const Header = () => {
             <Link href="/ranking" className="hover:text-brand-yellow hover:scale-105 transition-all">
               Ranking
             </Link>
+            <Link href="/membresia" className="hover:text-brand-yellow hover:scale-105 transition-all text-brand-yellow">
+              Membresía
+            </Link>
           </nav>
 
           {/* Actions (Desktop) & Hamburger (Mobile) */}
@@ -130,6 +133,9 @@ export const Header = () => {
               </Link>
               <Link href="/ranking" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Ranking
+              </Link>
+              <Link href="/membresia" className="text-brand-yellow hover:text-yellow-300 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                Membresía
               </Link>
             </nav>
             

@@ -148,6 +148,16 @@ export default function ConfigAdmin() {
               </div>
 
               <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                <h2 className="text-xl font-bold text-brand-yellow mb-2">Membresía (Membership)</h2>
+                <p className="text-white/40 text-xs mb-4">Puedes usar HTML básico como &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;br/&gt;</p>
+                <textarea 
+                  value={getValue('page_membership')} 
+                  onChange={(e) => handleInputChange('page_membership', e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded p-3 text-white focus:border-brand-yellow focus:outline-none transition-colors h-48 font-mono text-sm"
+                />
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
                 <h2 className="text-xl font-bold text-brand-yellow mb-2">Reglas Oficiales</h2>
                 <p className="text-white/40 text-xs mb-4">Puedes usar HTML básico como &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;br/&gt;</p>
                 <textarea 

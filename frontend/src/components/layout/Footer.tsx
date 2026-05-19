@@ -39,6 +39,7 @@ export const Footer = async () => {
             <li><Link href="/subastas" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">Subastas en Vivo</Link></li>
             <li><Link href="/torneos" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">La Arena</Link></li>
             <li><Link href="/ranking" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">Ranking Global</Link></li>
+            <li><Link href="/membresia" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform text-brand-yellow">Membresía</Link></li>
           </ul>
         </div>
 
