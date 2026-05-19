@@ -93,9 +93,9 @@ class Product(ProductBase):
 # --- AUCTION ---
 class AuctionBase(BaseModel):
     product_id: int
-    start_price: float
-    start_time: datetime
-    end_time: datetime
+    start_price: Optional[float] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
 
 class AuctionCreate(AuctionBase):
     pass
@@ -110,8 +110,8 @@ class AuctionUpdate(BaseModel):
 
 class Auction(AuctionBase):
     id: int
-    current_price: float
-    is_active: bool
+    current_price: Optional[float] = None
+    is_active: Optional[bool] = True
 
     class Config:
         orm_mode = True
