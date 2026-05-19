@@ -1010,6 +1010,20 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+@app.get("/api/test/email/outbid")
+async def test_outbid_email(email: str):
+    try:
+        await email_sender.send_outbid_email(
+            to_email=email,
+            user_name="Usuario de Prueba",
+            product_name="Carta de Prueba",
+            new_price=50000,
+            auction_id=1
+        )
+        return {"status": "ok", "message": f"Test email sent to {email}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.websocket("/api/ws/auctions/{auction_id}")
 async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = Depends(get_db)):
     await manager.connect(websocket, auction_id)
