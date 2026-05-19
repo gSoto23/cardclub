@@ -247,6 +247,7 @@ class SaleBase(BaseModel):
 
 class SaleCreate(SaleBase):
     items: List[SaleItemCreate]
+    buyer_email: Optional[str] = None
 
 class Sale(SaleBase):
     id: int

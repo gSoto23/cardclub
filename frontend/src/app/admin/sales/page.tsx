@@ -52,6 +52,7 @@ export default function SalesAdmin() {
   const [paymentMethod, setPaymentMethod] = useState("Efectivo");
   const [searchTerm, setSearchTerm] = useState("");
   const [addQuantities, setAddQuantities] = useState<Record<number, number>>({});
+  const [buyerEmail, setBuyerEmail] = useState("");
 
   // History State
   const [sales, setSales] = useState<Sale[]>([]);
@@ -193,6 +194,7 @@ export default function SalesAdmin() {
       total_amount,
       payment_method: paymentMethod,
       sale_type: "POS",
+      buyer_email: buyerEmail.trim() || undefined,
       items: cart.map(item => ({
         description: item.product.name,
         price: item.product.price,
@@ -215,6 +217,7 @@ export default function SalesAdmin() {
       if (res.ok) {
         toast.success("Venta registrada exitosamente");
         setCart([]);
+        setBuyerEmail("");
         fetchProducts(); // Refresh stock
         fetchSales(); // Refresh history
       } else {
@@ -426,6 +429,17 @@ export default function SalesAdmin() {
                       <span className="text-2xl">📱</span>
                       <span className="text-[10px] font-bold uppercase tracking-widest">SINPE</span>
                     </button>
+                  </div>
+
+                  <div className="flex flex-col gap-1 mb-6">
+                    <label className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Correo del comprador (Opcional)</label>
+                    <input 
+                      type="email" 
+                      placeholder="Para enviar recibo por correo" 
+                      value={buyerEmail} 
+                      onChange={e => setBuyerEmail(e.target.value)} 
+                      className="bg-black/40 border border-white/20 rounded-lg p-3 text-white text-sm focus:border-brand-yellow focus:outline-none w-full" 
+                    />
                   </div>
 
                   <Button variant="primary" className="w-full py-4 text-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(255,222,0,0.2)]" onClick={processCheckout} disabled={cart.length === 0}>

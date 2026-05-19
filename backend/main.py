@@ -102,7 +102,7 @@ async def upload_image(file: UploadFile = File(...), current_user: models.User =
 
 # --- AUTHENTICATION & USERS ---
 @app.post("/api/register", response_model=schemas.User, tags=["Auth"])
-def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register_user(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Verificar si el correo existe
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -121,6 +121,14 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Enviar correo de bienvenida
+    background_tasks.add_task(
+        email_sender.send_registration_email,
+        to_email=new_user.email,
+        user_name=new_user.nickname or new_user.full_name or "Coleccionista"
+    )
+
     return new_user
 
 @app.post("/api/login", response_model=schemas.Token, tags=["Auth"])
@@ -375,11 +383,26 @@ def get_tournaments(db: Session = Depends(get_db)):
     return db.query(models.Tournament).filter(models.Tournament.is_active == True).all()
 
 @app.post("/api/tournaments", response_model=schemas.Tournament, tags=["Tournaments"])
-def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+def create_tournament(tournament: schemas.TournamentCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
     db_tournament = models.Tournament(**tournament.dict())
     db.add(db_tournament)
     db.commit()
     db.refresh(db_tournament)
+
+    # Notificar a todos los usuarios de la comunidad
+    users = db.query(models.User).filter(models.User.email != None).all()
+    if users:
+        date_str = db_tournament.date.strftime("%d/%m/%Y %I:%M %p")
+        for u in users:
+            background_tasks.add_task(
+                email_sender.send_new_tournament_email,
+                to_email=u.email,
+                user_name=u.nickname or u.full_name or "Jugador",
+                tournament_name=db_tournament.name,
+                date_str=date_str,
+                entry_fee=db_tournament.entry_fee
+            )
+
     return db_tournament
 
 @app.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament, tags=["Tournaments"])
@@ -580,8 +603,13 @@ def get_tournament_results(tournament_id: int, db: Session = Depends(get_db)):
     return results
 
 @app.post("/api/tournaments/{tournament_id}/results", tags=["Tournaments", "Ranking"])
-def save_tournament_results(tournament_id: int, results: List[schemas.TournamentResultBase], db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+def save_tournament_results(tournament_id: int, results: List[schemas.TournamentResultBase], background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
     db.query(models.TournamentResult).filter(models.TournamentResult.tournament_id == tournament_id).delete()
+    
+    # Obtener info del torneo
+    tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    t_name = tournament.name if tournament else "Torneo"
+
     for res in results:
         db_res = models.TournamentResult(
             tournament_id=tournament_id,
@@ -590,6 +618,19 @@ def save_tournament_results(tournament_id: int, results: List[schemas.Tournament
             position=res.position
         )
         db.add(db_res)
+        
+        # Obtener info del usuario para enviarle el correo
+        user = db.query(models.User).filter(models.User.id == res.user_id).first()
+        if user and user.email:
+            background_tasks.add_task(
+                email_sender.send_tournament_results_email,
+                to_email=user.email,
+                user_name=user.nickname or user.full_name or "Jugador",
+                tournament_name=t_name,
+                position=res.position,
+                points=res.points
+            )
+
     db.commit()
     return {"status": "ok", "message": "Resultados guardados"}
 
@@ -656,7 +697,16 @@ def create_sale(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db:
     db.commit()
     db.refresh(db_sale)
 
-    if sale.user_id:
+    if sale.buyer_email:
+        background_tasks.add_task(
+            email_sender.send_purchase_email,
+            to_email=sale.buyer_email,
+            user_name="Cliente",
+            total=sale.total_amount,
+            items_count=len(sale.items),
+            payment_method=sale.payment_method
+        )
+    elif sale.user_id:
         user = db.query(models.User).filter(models.User.id == sale.user_id).first()
         if user and user.email:
             background_tasks.add_task(

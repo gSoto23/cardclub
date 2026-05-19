@@ -24,6 +24,8 @@ BASE_HTML = """
             color: #f8fafc;
             margin: 0;
             padding: 0;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
         }}
         .container {{
             max-width: 600px;
@@ -34,23 +36,26 @@ BASE_HTML = """
             overflow: hidden;
             margin-top: 20px;
             margin-bottom: 20px;
+            color: #f8fafc; /* Forzado aquí para clientes que omiten body */
         }}
         .header {{
             background-color: #facc15;
             padding: 20px;
             text-align: center;
         }}
-        .header h1 {{
-            color: #020617;
-            margin: 0;
-            font-size: 24px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        .header img {{
+            max-height: 80px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
         }}
         .content {{
             padding: 30px;
             line-height: 1.6;
+            color: #f8fafc;
+        }}
+        .content p {{
+            color: #f8fafc;
         }}
         .title {{
             color: #facc15;
@@ -65,6 +70,7 @@ BASE_HTML = """
             padding: 15px;
             margin: 20px 0;
             border-radius: 0 8px 8px 0;
+            color: #f8fafc;
         }}
         .button {{
             display: inline-block;
@@ -93,17 +99,17 @@ BASE_HTML = """
         }}
     </style>
 </head>
-<body>
-    <div class="container">
+<body style="background-color: #020617; color: #f8fafc; margin: 0; padding: 0;">
+    <div class="container" style="background-color: #0f172a; color: #f8fafc;">
         <div class="header">
-            <h1>Card Club</h1>
+            <img src="{api_base_url}/logo.png" alt="Card Club Logo" />
         </div>
-        <div class="content">
+        <div class="content" style="color: #f8fafc;">
             {content}
         </div>
-        <div class="footer">
-            <p>Este es un correo automático de Card Club Costa Rica.</p>
-            <p><a href="{api_base_url}">Visitar la tienda</a></p>
+        <div class="footer" style="color: #64748b;">
+            <p style="color: #64748b;">Este es un correo automático de Card Club Costa Rica.</p>
+            <p><a href="{api_base_url}" style="color: #facc15;">Visitar la tienda</a></p>
         </div>
     </div>
 </body>
@@ -225,3 +231,46 @@ async def send_auction_request_email(user_email: str, user_name: str, whatsapp: 
     <p>Pronto te contactaremos por WhatsApp para coordinar la entrega.</p>
     """
     await asyncio.to_thread(send_email, user_email, f"Recibimos tu solicitud de subasta para {card_name}", client_content)
+
+async def send_registration_email(to_email: str, user_name: str):
+    content = f"""
+    <div class="title">¡Bienvenido a Card Club! 🃏</div>
+    <p>Hola {user_name},</p>
+    <p>Tu cuenta ha sido creada exitosamente. Prepárate para coleccionar, competir y pujar en nuestras subastas en vivo.</p>
+    <div style="text-align: center;">
+        <a href="{API_BASE_URL}/perfil" class="button">IR A MI PERFIL</a>
+    </div>
+    """
+    await asyncio.to_thread(send_email, to_email, "¡Bienvenido a la comunidad Card Club!", content)
+
+async def send_tournament_results_email(to_email: str, user_name: str, tournament_name: str, position: int, points: int):
+    content = f"""
+    <div class="title">Resultados del Torneo ⚔️</div>
+    <p>Hola {user_name},</p>
+    <p>El torneo <strong>{tournament_name}</strong> ha finalizado. Aquí están tus resultados oficiales:</p>
+    <div class="highlight-box">
+        <strong>Posición:</strong> #{position}<br>
+        <strong>Puntos de Ranking Obtenidos:</strong> {points}
+    </div>
+    <p>¡Gracias por participar! Revisa tu posición en el Ranking Global desde nuestro sitio web.</p>
+    <div style="text-align: center;">
+        <a href="{API_BASE_URL}/ranking" class="button">VER RANKING</a>
+    </div>
+    """
+    await asyncio.to_thread(send_email, to_email, f"Resultados: {tournament_name}", content)
+
+async def send_new_tournament_email(to_email: str, user_name: str, tournament_name: str, date_str: str, entry_fee: float):
+    content = f"""
+    <div class="title">¡Nuevo Torneo Anunciado! 🏆</div>
+    <p>Hola {user_name},</p>
+    <p>Acabamos de abrir inscripciones para un nuevo torneo. ¡Asegura tu cupo antes de que se llenen!</p>
+    <div class="highlight-box">
+        <strong>Torneo:</strong> {tournament_name}<br>
+        <strong>Fecha:</strong> {date_str}<br>
+        <strong>Entrada:</strong> ₡{entry_fee:,.2f}
+    </div>
+    <div style="text-align: center;">
+        <a href="{API_BASE_URL}/torneos" class="button">INSCRIBIRSE AHORA</a>
+    </div>
+    """
+    await asyncio.to_thread(send_email, to_email, f"¡Inscripciones Abiertas: {tournament_name}!", content)

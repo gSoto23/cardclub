@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { toast } from "react-hot-toast";
 
 interface Tournament {
   id: number;
@@ -67,15 +68,15 @@ export default function TorneosPage() {
       });
 
       if (res.ok) {
-        alert("¡Inscripción exitosa! Está pendiente de confirmación en tienda.");
+        toast.success("¡Inscripción exitosa! Está pendiente de confirmación en tienda.");
         setSelectedTournament(null);
       } else {
         const errorData = await res.json();
-        alert(`Error: ${errorData.detail}`);
+        toast.error(`Error: ${errorData.detail}`);
       }
     } catch (err) {
       console.error(err);
-      alert("Hubo un error de conexión.");
+      toast.error("Hubo un error de conexión.");
     } finally {
       setIsRegistering(false);
     }
