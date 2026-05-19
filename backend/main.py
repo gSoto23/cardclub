@@ -205,9 +205,14 @@ def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_
 
 # --- PRODUCTS ---
 @app.get("/api/products", response_model=List[schemas.Product], tags=["Products"])
-def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    products = db.query(models.Product).offset(skip).limit(limit).all()
-    return products
+def read_products(skip: int = 0, limit: int = 100, visibility: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Product)
+    if visibility == "store":
+        query = query.filter(models.Product.is_auction_only == False, models.Product.is_pos_only == False)
+    elif visibility == "pos":
+        query = query.filter(models.Product.is_auction_only == False)
+    
+    return query.offset(skip).limit(limit).all()
 
 @app.post("/api/products", response_model=schemas.Product, tags=["Products"])
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):

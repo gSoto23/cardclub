@@ -43,7 +43,7 @@ export default function AuctionsAdmin() {
     try {
       const [aucRes, prodRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auctions`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?visibility=admin`)
       ]);
       const [aucData, prodData] = await Promise.all([aucRes.json(), prodRes.json()]);
       setAuctions(aucData);

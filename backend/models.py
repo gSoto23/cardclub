@@ -48,6 +48,8 @@ class Product(Base):
     language = Column(String, default="EN")
     is_foil = Column(Boolean, default=False)
     image_url = Column(String) # URL principal de la imagen
+    is_auction_only = Column(Boolean, default=False)
+    is_pos_only = Column(Boolean, default=False)
 
     category_id = Column(Integer, ForeignKey("categories.id"))
     category = relationship("Category", back_populates="products")

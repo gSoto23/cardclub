@@ -15,6 +15,8 @@ interface Product {
   purchase_price: number;
   stock: number;
   image_url?: string;
+  is_auction_only?: boolean;
+  is_pos_only?: boolean;
   category?: Category;
 }
 
@@ -33,7 +35,8 @@ export default function InventoryAdmin() {
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: "", description: "", price: 0, purchase_price: 0, stock: 1, category_id: 1,
-    game: "Pokémon TCG", expansion_set: "", condition: "NM", is_foil: false, image_url: ""
+    game: "Pokémon TCG", expansion_set: "", condition: "NM", is_foil: false, image_url: "",
+    is_auction_only: false, is_pos_only: false
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   
@@ -44,7 +47,7 @@ export default function InventoryAdmin() {
   const fetchData = async () => {
     try {
       const [prodRes, catRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?visibility=admin`),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`)
       ]);
       const [prodData, catData] = await Promise.all([prodRes.json(), catRes.json()]);
@@ -154,7 +157,8 @@ export default function InventoryAdmin() {
   const resetForm = () => {
     setFormData({
       name: "", description: "", price: 0, purchase_price: 0, stock: 1, category_id: categories.length > 0 ? categories[0].id : 1,
-      game: "Pokémon TCG", expansion_set: "", condition: "NM", is_foil: false, image_url: ""
+      game: "Pokémon TCG", expansion_set: "", condition: "NM", is_foil: false, image_url: "",
+      is_auction_only: false, is_pos_only: false
     });
     setImageFile(null);
     setEditingProductId(null);
@@ -172,7 +176,9 @@ export default function InventoryAdmin() {
       expansion_set: product.expansion_set,
       condition: product.condition,
       is_foil: product.is_foil,
-      image_url: product.image_url || "" // Wait, image_url wasn't in interface, let's assume it works.
+      image_url: product.image_url || "",
+      is_auction_only: product.is_auction_only || false,
+      is_pos_only: product.is_pos_only || false
     });
     setEditingProductId(product.id);
     setShowForm(true);
@@ -313,6 +319,16 @@ export default function InventoryAdmin() {
                 <label className="text-xs text-brand-yellow font-bold uppercase">¿Es carta Foil / Holográfica?</label>
               </div>
 
+              <div className="space-y-1 flex items-center gap-2 pt-6">
+                <input type="checkbox" checked={formData.is_auction_only} onChange={e => setFormData({...formData, is_auction_only: e.target.checked})} className="w-4 h-4" />
+                <label className="text-xs text-purple-400 font-bold uppercase" title="Ocultar del Mercado y POS. Visible solo al crear Subastas.">Solo Subastas</label>
+              </div>
+
+              <div className="space-y-1 flex items-center gap-2 pt-6">
+                <input type="checkbox" checked={formData.is_pos_only} onChange={e => setFormData({...formData, is_pos_only: e.target.checked})} className="w-4 h-4" />
+                <label className="text-xs text-blue-400 font-bold uppercase" title="Ocultar del Mercado Web. Solo visible para cobrar en POS local.">Solo POS (Tienda Física)</label>
+              </div>
+
               <div className="md:col-span-2 lg:col-span-3 mt-4 flex justify-end gap-3">
                 <Button variant="ghost" type="button" onClick={() => {setShowForm(false); resetForm();}}>Cancelar</Button>
                 <Button variant="primary" type="submit">
@@ -349,7 +365,9 @@ export default function InventoryAdmin() {
                     <td className="p-4 font-bold">
                       {p.name}
                       {p.is_foil && <span className="ml-2 text-[10px] bg-brand-yellow text-brand-blue px-1.5 py-0.5 rounded uppercase">Foil</span>}
-                      {p.category && <div className="text-[10px] text-purple-400 uppercase tracking-widest mt-1">{p.category.name}</div>}
+                      {p.is_auction_only && <span className="ml-2 text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/50 px-1.5 py-0.5 rounded uppercase">Subasta</span>}
+                      {p.is_pos_only && <span className="ml-2 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/50 px-1.5 py-0.5 rounded uppercase">POS</span>}
+                      {p.category && <div className="text-[10px] text-white/40 uppercase tracking-widest mt-1">{p.category.name}</div>}
                     </td>
                     <td className="p-4"><span className="bg-white/10 px-2 py-1 rounded text-xs">{p.condition}</span></td>
                     <td className="p-4 text-right text-red-300 font-mono">₡{p.purchase_price || 0}</td>

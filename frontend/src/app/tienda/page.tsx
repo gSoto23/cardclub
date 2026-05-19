@@ -4,7 +4,7 @@ import { ProductCard } from "@/components/ui/ProductCard";
 // Server Component data fetching
 async function getProducts() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`, { cache: 'no-store' });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?visibility=store`, { cache: 'no-store' });
     if (!res.ok) {
       throw new Error("Failed to fetch products");
     }
