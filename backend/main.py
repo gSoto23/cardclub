@@ -31,6 +31,13 @@ try:
 except Exception as e:
     print("is_pos_only migration skipped:", e)
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE auctions ADD COLUMN warning_1h_notified BOOLEAN DEFAULT FALSE;"))
+        print("warning_1h_notified column added.")
+except Exception as e:
+    print("warning_1h_notified migration skipped:", e)
+
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
