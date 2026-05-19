@@ -452,7 +452,11 @@ def get_tournaments(db: Session = Depends(get_db)):
 
 @app.post("/api/tournaments", response_model=schemas.Tournament, tags=["Tournaments"])
 def create_tournament(tournament: schemas.TournamentCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
-    db_tournament = models.Tournament(**tournament.dict())
+    tournament_data = tournament.dict()
+    if tournament.date and tournament.date.tzinfo:
+        tournament_data['date'] = tournament.date.astimezone(CR_TZ).replace(tzinfo=None)
+        
+    db_tournament = models.Tournament(**tournament_data)
     db.add(db_tournament)
     db.commit()
     db.refresh(db_tournament)
@@ -480,6 +484,9 @@ def update_tournament(tournament_id: int, tournament_update: schemas.TournamentU
         raise HTTPException(status_code=404, detail="Torneo no encontrado")
     
     update_data = tournament_update.dict(exclude_unset=True)
+    if 'date' in update_data and update_data['date'] and update_data['date'].tzinfo:
+        update_data['date'] = update_data['date'].astimezone(CR_TZ).replace(tzinfo=None)
+        
     for key, value in update_data.items():
         setattr(db_tournament, key, value)
         
