@@ -19,9 +19,9 @@ BASE_HTML = """
     <meta charset="UTF-8">
     <style>
         body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #020617;
-            color: #f8fafc;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
             margin: 0;
             padding: 0;
             -webkit-text-size-adjust: 100%;
@@ -29,87 +29,94 @@ BASE_HTML = """
         }}
         .container {{
             max-width: 600px;
-            margin: 0 auto;
-            background-color: #0f172a;
-            border: 1px solid #1e293b;
+            margin: 40px auto;
+            background-color: #ffffff;
             border-radius: 12px;
             overflow: hidden;
-            margin-top: 20px;
-            margin-bottom: 20px;
-            color: #f8fafc; /* Forzado aquí para clientes que omiten body */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }}
         .header {{
-            background-color: #facc15;
-            padding: 20px;
+            background-color: #3b4cca;
+            padding: 24px;
             text-align: center;
         }}
         .header img {{
-            max-height: 80px;
+            max-height: 70px;
             width: auto;
             display: block;
             margin: 0 auto;
         }}
         .content {{
-            padding: 30px;
+            padding: 40px 30px;
             line-height: 1.6;
-            color: #f8fafc;
+            color: #374151;
+            font-size: 16px;
         }}
         .content p {{
-            color: #f8fafc;
+            color: #374151;
+            margin-bottom: 16px;
         }}
         .title {{
-            color: #facc15;
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 15px;
+            color: #111827;
+            font-size: 22px;
+            font-weight: 900;
+            margin-bottom: 20px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #facc15;
+            padding-bottom: 10px;
+            display: inline-block;
         }}
         .highlight-box {{
-            background-color: rgba(250, 204, 21, 0.1);
+            background-color: #fefce8;
             border-left: 4px solid #facc15;
-            padding: 15px;
-            margin: 20px 0;
+            padding: 20px;
+            margin: 25px 0;
             border-radius: 0 8px 8px 0;
-            color: #f8fafc;
+            color: #1f2937;
+            font-size: 15px;
         }}
         .button {{
             display: inline-block;
             background-color: #facc15;
-            color: #020617 !important;
-            padding: 12px 24px;
+            color: #000000 !important;
+            padding: 14px 28px;
             text-decoration: none;
-            font-weight: 900;
+            font-weight: 800;
             border-radius: 8px;
-            margin-top: 20px;
+            margin-top: 25px;
             text-transform: uppercase;
             letter-spacing: 1px;
             text-align: center;
         }}
         .footer {{
-            background-color: #020617;
-            padding: 20px;
+            background-color: #f9fafb;
+            padding: 24px;
             text-align: center;
-            font-size: 12px;
-            color: #64748b;
-            border-top: 1px solid #1e293b;
+            font-size: 13px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
         }}
         .footer a {{
-            color: #facc15;
-            text-decoration: none;
+            color: #000000;
+            text-decoration: underline;
+            font-weight: bold;
         }}
     </style>
 </head>
-<body style="background-color: #020617; color: #f8fafc; margin: 0; padding: 0;">
-    <div class="container" style="background-color: #0f172a; color: #f8fafc;">
-        <div class="header">
-            <img src="{api_base_url}/logo.png" alt="Card Club Logo" />
-        </div>
-        <div class="content" style="color: #f8fafc;">
-            {content}
-        </div>
-        <div class="footer" style="color: #64748b;">
-            <p style="color: #64748b;">Este es un correo automático de Card Club Costa Rica.</p>
-            <p><a href="{api_base_url}" style="color: #facc15;">Visitar la tienda</a></p>
+<body style="background-color: #f3f4f6; color: #1f2937; margin: 0; padding: 0;">
+    <div style="background-color: #f3f4f6; padding: 20px;">
+        <div class="container" style="background-color: #ffffff; color: #1f2937; margin: 0 auto; max-width: 600px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div class="header" style="background-color: #3b4cca; padding: 24px; text-align: center;">
+                <img src="{api_base_url}/logo.png" alt="Card Club Logo" style="max-height: 70px; display: block; margin: 0 auto;" />
+            </div>
+            <div class="content" style="padding: 40px 30px; color: #374151; font-family: sans-serif; font-size: 16px; line-height: 1.6;">
+                {content}
+            </div>
+            <div class="footer" style="background-color: #f9fafb; padding: 24px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb;">
+                <p style="margin: 0 0 10px 0; color: #6b7280;">Este es un correo automático de Card Club Costa Rica.</p>
+                <p style="margin: 0;"><a href="{api_base_url}" style="color: #000000; text-decoration: underline; font-weight: bold;">Visitar la tienda</a></p>
+            </div>
         </div>
     </div>
 </body>
