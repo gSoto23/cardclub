@@ -79,11 +79,39 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
     return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);
   };
 
+  const [userId, setUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://cardclubcr.com'}/api/users/me`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const user = await res.json();
+            setUserId(user.id);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    fetchUser();
+  }, []);
+
   const placeBid = () => {
+    if (!userId) {
+      alert("Debes iniciar sesión para poder pujar en las subastas.");
+      window.location.href = "/login";
+      return;
+    }
+    
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       const newBid = currentPrice + selectedIncrement;
       ws.current.send(JSON.stringify({
-        user_id: 1,
+        user_id: userId,
         amount: newBid
       }));
     }
