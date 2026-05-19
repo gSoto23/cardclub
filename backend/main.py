@@ -47,9 +47,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+active_tasks = set()
+
+def fire_and_forget(coro):
+    task = asyncio.create_task(coro)
+    active_tasks.add(task)
+    task.add_done_callback(active_tasks.discard)
+
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(check_finished_auctions_loop())
+    fire_and_forget(check_finished_auctions_loop())
 
 async def check_finished_auctions_loop():
     while True:
@@ -1042,7 +1049,7 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                     previous_user = db.query(models.User).filter(models.User.id == previous_bidder_id).first()
                     if previous_user:
                         print(f"Sending outbid email to {previous_user.email} for {product_name}...")
-                        asyncio.create_task(email_sender.send_outbid_email(
+                        fire_and_forget(email_sender.send_outbid_email(
                             to_email=previous_user.email,
                             user_name=previous_user.nickname or previous_user.full_name or "Coleccionista",
                             product_name=product_name,
