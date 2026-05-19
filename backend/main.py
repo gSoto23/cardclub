@@ -236,7 +236,11 @@ def read_products(skip: int = 0, limit: int = 100, visibility: Optional[str] = N
     elif visibility == "pos":
         query = query.filter(models.Product.is_auction_only == False)
     
-    return query.offset(skip).limit(limit).all()
+    try:
+        return query.offset(skip).limit(limit).all()
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 @app.post("/api/products", response_model=schemas.Product, tags=["Products"])
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
