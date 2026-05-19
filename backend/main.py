@@ -18,18 +18,20 @@ CR_TZ = timezone(timedelta(hours=-6))
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
+from sqlalchemy import text
+
 # Auto-migración para añadir columnas nuevas
 try:
-    with engine.connect() as conn:
-        conn.execute("ALTER TABLE products ADD COLUMN is_auction_only BOOLEAN DEFAULT 0;")
-except:
-    pass
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE products ADD COLUMN is_auction_only BOOLEAN DEFAULT 0;"))
+except Exception as e:
+    print("Migración is_auction_only omitida:", e)
 
 try:
-    with engine.connect() as conn:
-        conn.execute("ALTER TABLE products ADD COLUMN is_pos_only BOOLEAN DEFAULT 0;")
-except:
-    pass
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE products ADD COLUMN is_pos_only BOOLEAN DEFAULT 0;"))
+except Exception as e:
+    print("Migración is_pos_only omitida:", e)
 
 app = FastAPI(
     title="Card Club Backend API",
