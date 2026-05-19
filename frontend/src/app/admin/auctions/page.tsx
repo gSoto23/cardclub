@@ -45,6 +45,14 @@ export default function AuctionsAdmin() {
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auctions`),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?visibility=admin`)
       ]);
+      if (!aucRes.ok) {
+        console.error("Auction API Error:", await aucRes.text());
+        throw new Error("Auction API returned error");
+      }
+      if (!prodRes.ok) {
+        console.error("Product API Error:", await prodRes.text());
+        throw new Error("Product API returned error");
+      }
       const [aucData, prodData] = await Promise.all([aucRes.json(), prodRes.json()]);
       setAuctions(aucData);
       setProducts(prodData);

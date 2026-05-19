@@ -105,6 +105,14 @@ origins = [
     # Agregar dominios de producción aquí después
 ]
 
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(ResponseValidationError)
+async def validation_exception_handler(request, exc):
+    print("Response Validation Error:", exc.errors())
+    return JSONResponse(status_code=500, content={"detail": "Response Validation Error", "errors": exc.errors()})
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -274,8 +282,12 @@ def delete_product(product_id: int, db: Session = Depends(get_db), current_admin
 @app.get("/api/auctions", response_model=List[schemas.Auction], tags=["Auctions"])
 def read_all_auctions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     # Este endpoint retorna el modelo Auction con su ID y todo lo básico, ideal para el admin
-    auctions = db.query(models.Auction).offset(skip).limit(limit).all()
-    return auctions
+    try:
+        auctions = db.query(models.Auction).offset(skip).limit(limit).all()
+        return auctions
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 @app.get("/api/auctions/active", tags=["Auctions"])
 def get_active_auctions(db: Session = Depends(get_db)):
