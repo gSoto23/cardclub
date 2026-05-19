@@ -29,6 +29,7 @@ interface Sale {
   sale_type: string;
   sale_date: string;
   origin_ref?: string;
+  user_email?: string;
   items: SaleItem[];
 }
 
@@ -56,6 +57,7 @@ export default function SalesAdmin() {
 
   // History State
   const [sales, setSales] = useState<Sale[]>([]);
+  const [salesStats, setSalesStats] = useState({ total_ventas: 0, total_costo: 0, ganancia: 0, total_orders: 0 });
   const [page, setPage] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -92,16 +94,31 @@ export default function SalesAdmin() {
   const fetchSales = async () => {
     try {
       let url = `${process.env.NEXT_PUBLIC_API_URL}/api/sales?skip=${page * LIMIT}&limit=${LIMIT}&sort_by=${sortBy}&order=${order}`;
-      if (startDate) url += `&start_date=${new Date(startDate).toISOString()}`;
-      if (endDate) url += `&end_date=${new Date(endDate).toISOString()}`;
-      if (searchId) url += `&search_id=${searchId}`;
-
-      const res = await fetch(url, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` }
-      });
-      if (res.ok) {
-        setSales(await res.json());
+      let statsUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/sales/stats?`;
+      
+      if (startDate) {
+        url += `&start_date=${new Date(startDate).toISOString()}`;
+        statsUrl += `start_date=${new Date(startDate).toISOString()}&`;
       }
+      if (endDate) {
+        url += `&end_date=${new Date(endDate).toISOString()}`;
+        statsUrl += `end_date=${new Date(endDate).toISOString()}&`;
+      }
+      if (searchId) {
+        url += `&search_id=${searchId}`;
+        statsUrl += `search_id=${searchId}&`;
+      }
+
+      const headers = { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` };
+      
+      const [resSales, resStats] = await Promise.all([
+        fetch(url, { headers }),
+        fetch(statsUrl, { headers })
+      ]);
+
+      if (resSales.ok) setSales(await resSales.json());
+      if (resStats.ok) setSalesStats(await resStats.json());
+      
     } catch (err) {
       console.error(err);
     } finally {
@@ -487,6 +504,22 @@ export default function SalesAdmin() {
                 </div>
               </div>
 
+              {/* Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-black/20 border border-white/10 rounded-lg p-4">
+                  <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Total Ventas</p>
+                  <p className="text-2xl font-black text-brand-yellow">{formatCRC(salesStats.total_ventas)}</p>
+                </div>
+                <div className="bg-black/20 border border-white/10 rounded-lg p-4">
+                  <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Total Costo</p>
+                  <p className="text-2xl font-black text-white">{formatCRC(salesStats.total_costo)}</p>
+                </div>
+                <div className="bg-black/20 border border-green-500/30 rounded-lg p-4">
+                  <p className="text-green-400/60 text-[10px] uppercase tracking-widest font-bold">Ganancia</p>
+                  <p className="text-2xl font-black text-green-400">{formatCRC(salesStats.ganancia)}</p>
+                </div>
+              </div>
+
               {/* Tabla */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -494,9 +527,11 @@ export default function SalesAdmin() {
                     <tr className="text-white/40 text-xs uppercase tracking-widest border-b border-white/10">
                       <th className="pb-4 font-normal">ID</th>
                       <th className="pb-4 font-normal">Origen</th>
+                      <th className="pb-4 font-normal">Email</th>
                       <th className="pb-4 font-normal">Fecha</th>
                       <th className="pb-4 font-normal">Tipo</th>
                       <th className="pb-4 font-normal">Items</th>
+                      <th className="pb-4 font-normal">Estado</th>
                       <th className="pb-4 font-normal">Pago</th>
                       <th className="pb-4 font-normal text-right">Total</th>
                     </tr>
@@ -507,6 +542,9 @@ export default function SalesAdmin() {
                         <td className="py-4 text-white/60 font-mono">#{sale.id}</td>
                         <td className="py-4">
                           <span className="bg-white/10 px-2 py-1 rounded text-[10px] font-mono font-bold text-white/80">{sale.origin_ref || `V-${sale.id}`}</span>
+                        </td>
+                        <td className="py-4 text-white/80 text-xs truncate max-w-[120px]" title={sale.user_email || 'N/A'}>
+                          {sale.user_email || <span className="text-white/20 italic">No Registrado</span>}
                         </td>
                         <td className="py-4 text-white">{new Date(sale.sale_date).toLocaleString('es-CR')}</td>
                         <td className="py-4">
@@ -520,6 +558,11 @@ export default function SalesAdmin() {
                               {item.quantity}x {item.description}
                             </div>
                           ))}
+                        </td>
+                        <td className="py-4">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.status === 'Completado' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                            {sale.status}
+                          </span>
                         </td>
                         <td className="py-4 text-white/60">{sale.payment_method}</td>
                         <td className="py-4 text-brand-yellow font-black text-right">{formatCRC(sale.total_amount)}</td>

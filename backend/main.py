@@ -833,6 +833,45 @@ def get_sales(
         
     return query.offset(skip).limit(limit).all()
 
+@app.get("/api/sales/stats", tags=["Sales"])
+def get_sales_stats(
+    start_date: Optional[str] = None, 
+    end_date: Optional[str] = None, 
+    search_id: Optional[int] = None,
+    db: Session = Depends(get_db), 
+    current_admin: models.User = Depends(auth.get_current_admin_user)
+):
+    query = db.query(models.Sale)
+
+    if search_id:
+        query = query.filter(models.Sale.id == search_id)
+    if start_date:
+        query = query.filter(models.Sale.sale_date >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.filter(models.Sale.sale_date <= datetime.fromisoformat(end_date))
+        
+    sales = query.all()
+    
+    total_ventas = 0.0
+    total_costo = 0.0
+    
+    for sale in sales:
+        total_ventas += sale.total_amount
+        for item in sale.items:
+            if item.reference_type == "Producto" and item.reference_id:
+                product = db.query(models.Product).filter(models.Product.id == item.reference_id).first()
+                if product:
+                    total_costo += (product.purchase_price * item.quantity)
+                    
+    ganancia = total_ventas - total_costo
+    
+    return {
+        "total_ventas": total_ventas,
+        "total_costo": total_costo,
+        "ganancia": ganancia,
+        "total_orders": len(sales)
+    }
+
 @app.post("/api/checkout", response_model=schemas.Sale, tags=["Sales"])
 def process_checkout(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Calculate real total amount and verify stock

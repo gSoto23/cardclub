@@ -149,6 +149,11 @@ class Sale(Base):
     origin_ref = Column(String, nullable=True)
 
     items = relationship("SaleItem", back_populates="sale")
+    user = relationship("User")
+
+    @property
+    def user_email(self):
+        return self.user.email if self.user else None
 
 class SaleItem(Base):
     __tablename__ = "sale_items"

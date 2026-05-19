@@ -253,6 +253,7 @@ class Sale(SaleBase):
     id: int
     status: str
     sale_date: datetime
+    user_email: Optional[str] = None
     items: List[SaleItem] = []
 
     class Config:
