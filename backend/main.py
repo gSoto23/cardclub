@@ -52,7 +52,18 @@ active_tasks = set()
 def fire_and_forget(coro):
     task = asyncio.create_task(coro)
     active_tasks.add(task)
-    task.add_done_callback(active_tasks.discard)
+    
+    def on_done(t):
+        active_tasks.discard(t)
+        try:
+            exc = t.exception()
+            if exc:
+                with open("debug.txt", "a") as f:
+                    f.write(f"Background task failed: {exc}\n")
+        except asyncio.CancelledError:
+            pass
+            
+    task.add_done_callback(on_done)
 
 @app.on_event("startup")
 async def startup_event():
@@ -1010,6 +1021,15 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+@app.get("/api/debug/logs")
+async def get_debug_logs():
+    import os
+    if not os.path.exists("debug.txt"):
+        return {"logs": ["No debug.txt found"]}
+    with open("debug.txt", "r") as f:
+        lines = f.readlines()
+    return {"logs": lines[-20:]}
+
 @app.get("/api/test/email/outbid")
 async def test_outbid_email(email: str):
     try:
@@ -1053,6 +1073,8 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                 highest_bid = db.query(models.Bid).filter(models.Bid.auction_id == auction_id).order_by(models.Bid.amount.desc()).first()
                 if highest_bid:
                     previous_bidder_id = highest_bid.user_id
+                    with open("debug.txt", "a") as f: f.write(f"Highest bid user_id is {previous_bidder_id}, current user_id is {user_id}\n")
+                
                 # Actualizar precio
                 auction.current_price = new_amount
                 
@@ -1064,6 +1086,7 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                 if previous_bidder_id and previous_bidder_id != user_id:
                     previous_user = db.query(models.User).filter(models.User.id == previous_bidder_id).first()
                     if previous_user:
+                        with open("debug.txt", "a") as f: f.write(f"Sending outbid email to {previous_user.email} for {product_name}\n")
                         print(f"Sending outbid email to {previous_user.email} for {product_name}...")
                         fire_and_forget(email_sender.send_outbid_email(
                             to_email=previous_user.email,
@@ -1072,6 +1095,10 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                             new_price=new_amount,
                             auction_id=auction_id
                         ))
+                    else:
+                        with open("debug.txt", "a") as f: f.write(f"Previous user {previous_bidder_id} not found in DB\n")
+                else:
+                    with open("debug.txt", "a") as f: f.write(f"Condition failed: prev={previous_bidder_id}, curr={user_id}\n")
                 
                 # Broadcast a todos los conectados
                 await manager.broadcast(json.dumps({
