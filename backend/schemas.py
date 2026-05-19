@@ -243,6 +243,7 @@ class SaleBase(BaseModel):
     payment_method: str
     sale_type: str
     user_id: Optional[int] = None
+    origin_ref: Optional[str] = None
 
 class SaleCreate(SaleBase):
     items: List[SaleItemCreate]

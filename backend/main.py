@@ -549,7 +549,8 @@ def confirm_registration(registration_id: int, db: Session = Depends(get_db), cu
         total_amount=reg.tournament.entry_fee,
         payment_method=reg.payment_method,
         sale_type="Torneo",
-        status="Completado"
+        status="Completado",
+        origin_ref=f"I-{reg.id}"
     )
     db.add(db_sale)
     db.flush() # Para obtener db_sale.id

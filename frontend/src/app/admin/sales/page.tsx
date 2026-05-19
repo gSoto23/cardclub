@@ -28,6 +28,7 @@ interface Sale {
   status: string;
   sale_type: string;
   sale_date: string;
+  origin_ref?: string;
   items: SaleItem[];
 }
 
@@ -478,6 +479,7 @@ export default function SalesAdmin() {
                   <thead>
                     <tr className="text-white/40 text-xs uppercase tracking-widest border-b border-white/10">
                       <th className="pb-4 font-normal">ID</th>
+                      <th className="pb-4 font-normal">Origen</th>
                       <th className="pb-4 font-normal">Fecha</th>
                       <th className="pb-4 font-normal">Tipo</th>
                       <th className="pb-4 font-normal">Items</th>
@@ -489,6 +491,9 @@ export default function SalesAdmin() {
                     {sales.map(sale => (
                       <tr key={sale.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                         <td className="py-4 text-white/60 font-mono">#{sale.id}</td>
+                        <td className="py-4">
+                          <span className="bg-white/10 px-2 py-1 rounded text-[10px] font-mono font-bold text-white/80">{sale.origin_ref || `V-${sale.id}`}</span>
+                        </td>
                         <td className="py-4 text-white">{new Date(sale.sale_date).toLocaleString('es-CR')}</td>
                         <td className="py-4">
                           <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.sale_type === 'POS' ? 'bg-blue-500/20 text-blue-400' : sale.sale_type === 'Torneo' ? 'bg-purple-500/20 text-purple-400' : 'bg-brand-yellow/20 text-brand-yellow'}`}>

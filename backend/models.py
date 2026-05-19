@@ -145,6 +145,7 @@ class Sale(Base):
     status = Column(String, default="Completado") # "Completado", "Cancelado"
     sale_type = Column(String) # "POS", "Torneo", "Subasta"
     sale_date = Column(DateTime, default=lambda: datetime.now(CR_TZ).replace(tzinfo=None))
+    origin_ref = Column(String, nullable=True)
 
     items = relationship("SaleItem", back_populates="sale")
 
