@@ -9,7 +9,7 @@ import shutil
 import uuid
 from database import engine, get_db, SessionLocal
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta, datetime, timezone
 
@@ -17,6 +17,19 @@ CR_TZ = timezone(timedelta(hours=-6))
 
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
+
+# Auto-migración para añadir columnas nuevas
+try:
+    with engine.connect() as conn:
+        conn.execute("ALTER TABLE products ADD COLUMN is_auction_only BOOLEAN DEFAULT 0;")
+except:
+    pass
+
+try:
+    with engine.connect() as conn:
+        conn.execute("ALTER TABLE products ADD COLUMN is_pos_only BOOLEAN DEFAULT 0;")
+except:
+    pass
 
 app = FastAPI(
     title="Card Club Backend API",
@@ -846,7 +859,7 @@ def get_sales_stats(
     db: Session = Depends(get_db), 
     current_admin: models.User = Depends(auth.get_current_admin_user)
 ):
-    query = db.query(models.Sale)
+    query = db.query(models.Sale).filter(models.Sale.status == "Completado")
 
     if search_id:
         query = query.filter(models.Sale.id == search_id)
