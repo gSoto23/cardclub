@@ -1019,6 +1019,7 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
             
             if auction and auction.is_active and new_amount > auction.current_price:
                 previous_bidder_id = None
+                product_name = auction.product.name if auction.product else "Producto en Subasta"
                 if auction.bids:
                     highest_bid = max(auction.bids, key=lambda b: b.amount)
                     previous_bidder_id = highest_bid.user_id
@@ -1033,10 +1034,11 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                 if previous_bidder_id and previous_bidder_id != user_id:
                     previous_user = db.query(models.User).filter(models.User.id == previous_bidder_id).first()
                     if previous_user:
+                        print(f"Sending outbid email to {previous_user.email} for {product_name}...")
                         asyncio.create_task(email_sender.send_outbid_email(
                             to_email=previous_user.email,
                             user_name=previous_user.nickname or previous_user.full_name or "Coleccionista",
-                            product_name=auction.product.name,
+                            product_name=product_name,
                             new_price=new_amount,
                             auction_id=auction_id
                         ))
