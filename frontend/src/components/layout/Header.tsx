@@ -43,7 +43,7 @@ export const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8 font-bold text-sm tracking-widest uppercase text-white/80">
             <Link href="/tienda" className="hover:text-brand-yellow hover:scale-105 transition-all">
-              Mercado
+              Shop Tienda
             </Link>
             <Link href="/subastas" className="flex items-center gap-2 text-brand-yellow hover:text-yellow-300 hover:scale-105 transition-all">
               <span className="flex h-2.5 w-2.5 relative">
@@ -53,7 +53,7 @@ export const Header = () => {
               Subastas en Vivo
             </Link>
             <Link href="/torneos" className="hover:text-brand-yellow hover:scale-105 transition-all">
-              La Arena
+              Calendario de eventos
             </Link>
             <Link href="/ranking" className="hover:text-brand-yellow hover:scale-105 transition-all">
               Ranking
@@ -119,7 +119,7 @@ export const Header = () => {
           <div className="absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-brand-blue/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center justify-center gap-8 lg:hidden animate-in fade-in slide-in-from-top-4 duration-300">
             <nav className="flex flex-col items-center gap-8 font-black text-xl tracking-widest uppercase text-white">
               <Link href="/tienda" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                Mercado
+                Shop Tienda
               </Link>
               <Link href="/subastas" className="text-brand-yellow hover:text-yellow-300 transition-colors flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                 <span className="flex h-3 w-3 relative">
@@ -129,7 +129,7 @@ export const Header = () => {
                 Subastas en Vivo
               </Link>
               <Link href="/torneos" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                La Arena
+                Calendario de eventos
               </Link>
               <Link href="/ranking" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Ranking

@@ -112,9 +112,8 @@ export default function TorneosPage() {
           Calendario <span className="text-brand-yellow">Competitivo</span>
         </h1>
         <p className="text-white/60 text-lg max-w-2xl mb-8">
-          Participa en nuestros torneos oficiales y mide tus habilidades contra los mejores jugadores de Card Club. Reúne tu deck, confirma tu asistencia y lucha por los premios.
+          Particia en nuestros eventos oficiales, Torneos competitivos, aprende a jugar en nuestra escuelita pokemon y mantente al tanto de nuestras otras actividades.
         </p>
-
         {/* Filtro por Mes */}
         {tournaments.length > 0 && (
           <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
@@ -122,11 +121,10 @@ export default function TorneosPage() {
               <button
                 key={month}
                 onClick={() => setSelectedMonth(month)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full font-bold text-sm uppercase tracking-widest transition-colors ${
-                  selectedMonth === month 
-                    ? "bg-brand-yellow text-brand-blue" 
-                    : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
-                }`}
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-bold text-sm uppercase tracking-widest transition-colors ${selectedMonth === month
+                  ? "bg-brand-yellow text-brand-blue"
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                  }`}
               >
                 {month}
               </button>
@@ -147,7 +145,7 @@ export default function TorneosPage() {
 
             return (
               <div key={t.id} className={`bg-black/20 border ${isPast ? 'border-white/5 opacity-50' : 'border-white/10 hover:border-brand-yellow/30'} rounded-2xl overflow-hidden flex flex-col md:flex-row transition-colors min-w-[85vw] lg:min-w-0 snap-center`}>
-                
+
                 {/* Date Block */}
                 <div className="bg-brand-yellow/10 p-6 flex flex-col justify-center items-center min-w-[140px] border-b md:border-b-0 md:border-r border-white/10">
                   <span className="text-brand-yellow font-bold uppercase tracking-widest text-sm">{dateObj.toLocaleString('es-CR', { month: 'short' })}</span>
@@ -155,7 +153,7 @@ export default function TorneosPage() {
                   <span className="text-white/60 text-xs mt-1">{dateObj.toLocaleString('es-CR', { weekday: 'long' })}</span>
                   <span className="text-white font-mono mt-3">{dateObj.toLocaleString('es-CR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                
+
                 {/* Info Block */}
                 <div className="p-6 flex-grow flex flex-col">
                   <div className="flex justify-between items-start mb-2 gap-2">
@@ -175,14 +173,14 @@ export default function TorneosPage() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 bg-black/40 rounded-lg p-3 border border-white/5 flex items-center justify-between">
                     <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Inscritos</span>
                     <div className="flex items-center gap-2">
                       <div className="w-full max-w-[100px] h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-brand-yellow transition-all" 
-                          style={{ width: `${Math.min(100, (t.registered_count / t.max_players) * 100)}%` }} 
+                        <div
+                          className="h-full bg-brand-yellow transition-all"
+                          style={{ width: `${Math.min(100, (t.registered_count / t.max_players) * 100)}%` }}
                         />
                       </div>
                       <span className="text-brand-yellow font-mono text-sm font-bold">
@@ -190,16 +188,16 @@ export default function TorneosPage() {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="mt-auto pt-6 flex justify-between items-end">
                     <div>
                       <p className="text-white/40 text-[10px] uppercase tracking-widest mb-1">Inscripción</p>
                       <p className="text-brand-yellow font-black text-2xl">{formatCRC(t.entry_fee)}</p>
                     </div>
-                    
+
                     {!isPast && (
-                      <Button 
-                        variant="primary" 
+                      <Button
+                        variant="primary"
                         onClick={() => {
                           if (isLoggedIn) {
                             setSelectedTournament(t);
@@ -228,7 +226,7 @@ export default function TorneosPage() {
           <div className="bg-brand-blue border border-brand-yellow/30 rounded-2xl max-w-md w-full p-6 shadow-[0_0_50px_rgba(255,222,0,0.1)]">
             <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-2">Inscripción al Torneo</h2>
             <p className="text-white/60 text-sm mb-6">Estás a punto de inscribirte al evento <span className="text-brand-yellow font-bold">{selectedTournament.name}</span>.</p>
-            
+
             <div className="bg-black/40 rounded-xl p-4 mb-6">
               <div className="flex justify-between mb-2">
                 <span className="text-white/60 text-sm">Costo de Entrada:</span>
@@ -242,7 +240,7 @@ export default function TorneosPage() {
 
             <div className="space-y-2 mb-8">
               <label className="text-xs text-white/60 font-bold uppercase tracking-widest">Método de Pago</label>
-              <select 
+              <select
                 value={paymentMethod}
                 onChange={e => setPaymentMethod(e.target.value)}
                 className="w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white focus:border-brand-yellow outline-none"

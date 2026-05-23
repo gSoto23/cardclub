@@ -30,6 +30,68 @@ export default function InventoryAdmin() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Filter & Sort State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedGame, setSelectedGame] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [sortKey, setSortKey] = useState<string>("id");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  // Get unique games from products list
+  const uniqueGames = React.useMemo(() => {
+    return Array.from(new Set(products.map(p => p.game).filter(Boolean))).sort();
+  }, [products]);
+
+  // Handle Sort Key Toggle
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  };
+
+  // Filter and Sort Logic
+  const filteredAndSortedProducts = React.useMemo(() => {
+    const filtered = products.filter(p => {
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchesName = p.name?.toLowerCase().includes(term);
+        const matchesSet = p.expansion_set?.toLowerCase().includes(term);
+        const matchesGame = p.game?.toLowerCase().includes(term);
+        if (!matchesName && !matchesSet && !matchesGame) return false;
+      }
+      if (selectedGame && p.game !== selectedGame) return false;
+      if (selectedCategory && p.category?.name !== selectedCategory) return false;
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      let aVal: any = a[sortKey as keyof Product];
+      let bVal: any = b[sortKey as keyof Product];
+
+      if (sortKey === "category") {
+        aVal = a.category?.name || "";
+        bVal = b.category?.name || "";
+      } else if (sortKey === "margin") {
+        aVal = a.price - (a.purchase_price || 0);
+        bVal = b.price - (b.purchase_price || 0);
+      }
+
+      if (aVal === undefined || aVal === null) aVal = "";
+      if (bVal === undefined || bVal === null) bVal = "";
+
+      if (typeof aVal === "string") {
+        const comparison = aVal.localeCompare(bVal);
+        return sortDirection === "asc" ? comparison : -comparison;
+      } else {
+        const comparison = aVal - bVal;
+        return sortDirection === "asc" ? comparison : -comparison;
+      }
+    });
+  }, [products, searchTerm, selectedGame, selectedCategory, sortKey, sortDirection]);
+  
   // Form State
   const [showForm, setShowForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -339,23 +401,104 @@ export default function InventoryAdmin() {
           </div>
         )}
 
+        {/* Panel de Filtros */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between backdrop-blur-md">
+          <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
+            {/* Buscador */}
+            <div className="relative w-full md:w-80">
+              <input
+                type="text"
+                placeholder="Buscar por nombre, set..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full bg-black/20 border border-white/10 hover:border-white/20 focus:border-brand-yellow text-white rounded-lg px-4 py-2 text-sm outline-none transition-all placeholder:text-white/30"
+              />
+            </div>
+            
+            {/* Juego Filter */}
+            <select
+              value={selectedGame}
+              onChange={e => setSelectedGame(e.target.value)}
+              className="bg-black/20 border border-white/10 text-white rounded-lg px-4 py-2 text-sm outline-none cursor-pointer w-full md:w-auto"
+            >
+              <option value="" className="bg-brand-blue">Todos los juegos</option>
+              {uniqueGames.map(g => (
+                <option key={g} value={g} className="bg-brand-blue">{g}</option>
+              ))}
+            </select>
+
+            {/* Categoria Filter */}
+            <select
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+              className="bg-black/20 border border-white/10 text-white rounded-lg px-4 py-2 text-sm outline-none cursor-pointer w-full md:w-auto"
+            >
+              <option value="" className="bg-brand-blue">Todas las categorías</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.name} className="bg-brand-blue">{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {(searchTerm || selectedGame || selectedCategory) && (
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedGame("");
+                setSelectedCategory("");
+              }}
+              className="text-brand-yellow text-xs font-bold uppercase tracking-widest hover:text-yellow-300 transition-colors"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+
         {/* Tabla de Productos */}
         <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
           <table className="w-full text-left text-white">
             <thead className="bg-black/40 text-xs uppercase tracking-widest text-white/60 border-b border-white/10">
               <tr>
-                <th className="p-4">ID</th>
-                <th className="p-4">Producto</th>
-                <th className="p-4">Condición</th>
-                <th className="p-4 text-right">Compra</th>
-                <th className="p-4 text-right">Venta</th>
-                <th className="p-4 text-right">Margen</th>
-                <th className="p-4 text-right">Stock</th>
+                <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("id")}>
+                  <div className="flex items-center gap-1">
+                    ID {sortKey === "id" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
+                <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("name")}>
+                  <div className="flex items-center gap-1">
+                    Producto {sortKey === "name" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
+                <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("condition")}>
+                  <div className="flex items-center gap-1">
+                    Condición {sortKey === "condition" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
+                <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("purchase_price")}>
+                  <div className="flex items-center justify-end gap-1">
+                    Compra {sortKey === "purchase_price" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
+                <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("price")}>
+                  <div className="flex items-center justify-end gap-1">
+                    Venta {sortKey === "price" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
+                <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("margin")}>
+                  <div className="flex items-center justify-end gap-1">
+                    Margen {sortKey === "margin" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
+                <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("stock")}>
+                  <div className="flex items-center justify-end gap-1">
+                    Stock {sortKey === "stock" && (sortDirection === "asc" ? "▲" : "▼")}
+                  </div>
+                </th>
                 <th className="p-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {products.map(p => {
+              {filteredAndSortedProducts.map(p => {
                 const marginAmount = p.price - (p.purchase_price || 0);
                 const marginPercent = p.purchase_price > 0 ? (marginAmount / p.purchase_price) * 100 : 100;
                 
@@ -391,7 +534,7 @@ export default function InventoryAdmin() {
                   </tr>
                 );
               })}
-              {products.length === 0 && (
+              {filteredAndSortedProducts.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-white/40">No hay productos en el inventario.</td>
                 </tr>

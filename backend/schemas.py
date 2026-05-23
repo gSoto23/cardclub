@@ -16,6 +16,10 @@ class UserBase(BaseModel):
     nickname: Optional[str] = None
     whatsapp: Optional[str] = None
     avatar_url: Optional[str] = None
+    pokemon_player_id: Optional[str] = None
+    one_piece_player_id: Optional[str] = None
+    has_membership: Optional[bool] = False
+    membership_status: Optional[str] = "Ninguna"
 
 class UserCreate(UserBase):
     password: str
@@ -26,6 +30,8 @@ class UserUpdate(BaseModel):
     nickname: Optional[str] = None
     whatsapp: Optional[str] = None
     avatar_url: Optional[str] = None
+    pokemon_player_id: Optional[str] = None
+    one_piece_player_id: Optional[str] = None
 
 class User(UserBase):
     id: int
@@ -278,3 +284,43 @@ class SiteConfig(SiteConfigBase):
 
 class SiteConfigUpdateList(BaseModel):
     configs: List[SiteConfigBase]
+
+# --- MEMBERSHIPS ---
+class MembershipItemBase(BaseModel):
+    name: str
+
+class MembershipItemCreate(MembershipItemBase):
+    pass
+
+class MembershipItem(MembershipItemBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class UserMembershipItemResponse(BaseModel):
+    id: int
+    user_id: int
+    membership_item_id: int
+    is_delivered: bool
+    delivered_at: Optional[datetime] = None
+    item: MembershipItem
+
+    class Config:
+        orm_mode = True
+
+class UserMembershipResponse(BaseModel):
+    id: int
+    email: str
+    full_name: Optional[str] = None
+    nickname: Optional[str] = None
+    has_membership: bool
+    membership_status: str
+    membership_items: List[UserMembershipItemResponse] = []
+
+    class Config:
+        orm_mode = True
+
+class UserMembershipToggleRequest(BaseModel):
+    has_membership: bool
+    membership_status: str  # "Activa", "Vencida", "Ninguna"

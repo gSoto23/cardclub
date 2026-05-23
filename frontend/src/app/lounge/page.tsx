@@ -38,6 +38,8 @@ interface UserProfile {
   nickname: string | null;
   whatsapp: string | null;
   avatar_url: string | null;
+  pokemon_player_id: string | null;
+  one_piece_player_id: string | null;
 }
 
 export default function LoungePage() {
@@ -45,6 +47,7 @@ export default function LoungePage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [activeBids, setActiveBids] = useState<ActiveBid[]>([]);
   const [wonAuctions, setWonAuctions] = useState<WonAuction[]>([]);
+  const [ranking, setRanking] = useState<{ position: string; total_points: number }>({ position: "-", total_points: 0 });
   const [loading, setLoading] = useState(true);
   
   // Modal State
@@ -53,6 +56,8 @@ export default function LoungePage() {
     full_name: "",
     nickname: "",
     whatsapp: "",
+    pokemon_player_id: "",
+    one_piece_player_id: "",
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -70,11 +75,12 @@ export default function LoungePage() {
     const token = localStorage.getItem("auth_token");
     const headers = { "Authorization": `Bearer ${token}` };
     try {
-      const [userRes, regRes, bidsRes, wonRes] = await Promise.all([
+      const [userRes, regRes, bidsRes, wonRes, rankingRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, { headers }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me/tournaments`, { headers }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me/bids/active`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me/auctions/won`, { headers })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me/auctions/won`, { headers }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me/ranking`, { headers })
       ]);
       
       if (userRes.ok) {
@@ -83,12 +89,15 @@ export default function LoungePage() {
         setEditForm({
           full_name: user.full_name || "",
           nickname: user.nickname || "",
-          whatsapp: user.whatsapp || ""
+          whatsapp: user.whatsapp || "",
+          pokemon_player_id: user.pokemon_player_id || "",
+          one_piece_player_id: user.one_piece_player_id || ""
         });
       }
       if (regRes.ok) setRegistrations(await regRes.json());
       if (bidsRes.ok) setActiveBids(await bidsRes.json());
       if (wonRes.ok) setWonAuctions(await wonRes.json());
+      if (rankingRes.ok) setRanking(await rankingRes.json());
       
     } catch (err) {
       console.error(err);
@@ -185,14 +194,37 @@ export default function LoungePage() {
             </div>
           </div>
 
-          <div className="flex-1 text-center md:text-left">
+          <div className="flex-grow flex-shrink-0 text-center md:text-left">
             <h1 className="text-4xl md:text-5xl font-black text-white uppercase italic tracking-tighter mb-1">
-              {userProfile?.nickname || userProfile?.full_name?.split(' ')[0] || "Jugador"} <span className="text-brand-yellow text-xl ml-2">ID: {userProfile?.id}</span>
+              {userProfile?.nickname || userProfile?.full_name?.split(' ')[0] || "Jugador"}
             </h1>
-            <p className="text-white/60 text-lg mb-4">{userProfile?.full_name || "Sin Nombre Registrado"}</p>
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm font-bold uppercase tracking-widest text-white/40">
-              <span className="bg-black/40 px-3 py-1 rounded">📧 {userProfile?.email}</span>
-              {userProfile?.whatsapp && <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded">📱 {userProfile.whatsapp}</span>}
+            <div className="text-brand-yellow text-xs font-bold uppercase tracking-widest mb-3">
+              Card Club ID: #{userProfile?.id}
+            </div>
+            <p className="text-white/60 text-sm mb-4 font-medium">{userProfile?.full_name || "Sin Nombre Registrado"}</p>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-bold uppercase tracking-widest text-white/40">
+              <span className="bg-black/40 px-3 py-1.5 rounded">📧 {userProfile?.email}</span>
+              {userProfile?.whatsapp && <span className="bg-green-500/20 text-green-400 px-3 py-1.5 rounded">📱 {userProfile.whatsapp}</span>}
+            </div>
+            
+            {/* Stats and Game IDs block */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+              <div className="bg-black/20 rounded-xl p-3 border border-white/5 flex flex-col justify-center">
+                <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest block mb-1">Ranking Mensual</span>
+                <span className="text-brand-yellow text-lg font-black">{ranking.position !== "-" ? `#${ranking.position}` : "-"}</span>
+              </div>
+              <div className="bg-black/20 rounded-xl p-3 border border-white/5 flex flex-col justify-center">
+                <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest block mb-1">Puntos Acumulados</span>
+                <span className="text-white text-lg font-black">{ranking.total_points} pts</span>
+              </div>
+              <div className="bg-black/20 rounded-xl p-3 border border-white/5 flex flex-col justify-center">
+                <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest block mb-1">Pokémon ID</span>
+                <span className="text-white text-xs font-bold truncate block">{userProfile?.pokemon_player_id || "No registrado"}</span>
+              </div>
+              <div className="bg-black/20 rounded-xl p-3 border border-white/5 flex flex-col justify-center">
+                <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest block mb-1">One Piece ID</span>
+                <span className="text-white text-xs font-bold truncate block">{userProfile?.one_piece_player_id || "No registrado"}</span>
+              </div>
             </div>
           </div>
 
@@ -247,30 +279,7 @@ export default function LoungePage() {
               )}
             </div>
 
-            {/* Vitrina de Victorias */}
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-6 uppercase tracking-widest flex items-center gap-3">
-                <span className="w-8 h-1 bg-yellow-500"></span> Vitrina de Victorias
-              </h2>
-              {wonAuctions.length === 0 ? (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center border-dashed">
-                  <p className="text-white/60">Aún no has ganado ninguna subasta. ¡La suerte favorece a los audaces!</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {wonAuctions.map(won => (
-                    <div key={won.auction_id} className="bg-gradient-to-br from-yellow-900/40 to-black border border-yellow-500/30 rounded-xl p-4 flex gap-4">
-                      {won.image_url && <img src={won.image_url} alt={won.product_name} className="w-16 h-16 object-cover rounded shadow-[0_0_10px_rgba(255,222,0,0.2)]" />}
-                      <div className="flex flex-col justify-center">
-                        <h4 className="text-white font-bold text-sm line-clamp-2">{won.product_name}</h4>
-                        <span className="text-yellow-500 font-mono text-sm mt-1">₡{won.final_price}</span>
-                        <span className="text-white/40 text-[10px] uppercase mt-1">Ganada el {new Date(won.end_time).toLocaleDateString('es-CR')}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Vitrina de Victorias removida */}
           </div>
 
           {/* Right Column: Actividad (Pujas Activas) */}
@@ -318,7 +327,7 @@ export default function LoungePage() {
       {/* Edit Profile Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-brand-blue border border-white/20 p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
+          <div className="bg-brand-blue border border-white/20 p-8 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl relative">
             <button 
               onClick={() => setIsEditModalOpen(false)}
               className="absolute top-4 right-4 text-white/40 hover:text-white"
@@ -374,6 +383,24 @@ export default function LoungePage() {
                   type="text" 
                   value={editForm.whatsapp}
                   onChange={(e) => setEditForm({...editForm, whatsapp: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-yellow"
+                />
+              </div>
+              <div>
+                <label className="block text-white/80 text-xs font-bold uppercase tracking-wider mb-2">Pokémon Player ID</label>
+                <input 
+                  type="text" 
+                  value={editForm.pokemon_player_id}
+                  onChange={(e) => setEditForm({...editForm, pokemon_player_id: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-yellow"
+                />
+              </div>
+              <div>
+                <label className="block text-white/80 text-xs font-bold uppercase tracking-wider mb-2">One Piece Player ID</label>
+                <input 
+                  type="text" 
+                  value={editForm.one_piece_player_id}
+                  onChange={(e) => setEditForm({...editForm, one_piece_player_id: e.target.value})}
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-yellow"
                 />
               </div>

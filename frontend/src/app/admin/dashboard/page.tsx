@@ -69,6 +69,13 @@ export default function AdminDashboard() {
             <p className="text-white/40 text-xs mt-4">Punto de Venta e Historial</p>
           </div>
 
+          {/* Tarjeta de Membresías */}
+          <div onClick={() => window.location.href = '/admin/memberships'} className="bg-white/5 border border-white/10 p-6 rounded-xl hover:border-brand-yellow/30 transition-colors cursor-pointer group">
+            <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">Membresías</h3>
+            <p className="text-3xl font-black text-white group-hover:text-brand-yellow transition-colors">Socios</p>
+            <p className="text-white/40 text-xs mt-4">Gestionar beneficios y entregas</p>
+          </div>
+
           {/* Tarjeta de Configuración */}
           <div onClick={() => window.location.href = '/admin/config'} className="bg-white/5 border border-white/10 p-6 rounded-xl hover:border-brand-yellow/30 transition-colors cursor-pointer group md:col-span-2 lg:col-span-1">
             <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">Sistema</h3>

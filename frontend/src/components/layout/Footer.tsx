@@ -35,9 +35,9 @@ export const Footer = async () => {
         <div className="md:col-span-2">
           <h4 className="font-bold text-white mb-6 text-sm tracking-widest uppercase">Plataforma</h4>
           <ul className="space-y-4 text-sm text-white/60 font-medium">
-            <li><Link href="/tienda" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">Mercado</Link></li>
+            <li><Link href="/tienda" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">Shop Tienda</Link></li>
             <li><Link href="/subastas" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">Subastas en Vivo</Link></li>
-            <li><Link href="/torneos" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">La Arena</Link></li>
+            <li><Link href="/torneos" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">Calendario de eventos</Link></li>
             <li><Link href="/ranking" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform">Ranking Global</Link></li>
             <li><Link href="/membresia" className="hover:text-brand-yellow transition-colors hover:translate-x-1 inline-block transform text-brand-yellow">Membresía</Link></li>
           </ul>

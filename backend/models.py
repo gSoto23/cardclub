@@ -19,9 +19,14 @@ class User(Base):
     nickname = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     whatsapp = Column(String, nullable=True)
+    pokemon_player_id = Column(String, nullable=True)
+    one_piece_player_id = Column(String, nullable=True)
+    has_membership = Column(Boolean, default=False)
+    membership_status = Column(String, default="Ninguna") # Activa, Vencida, Ninguna
 
     bids = relationship("Bid", back_populates="user")
     tournaments = relationship("TournamentRegistration", back_populates="user")
+    membership_items = relationship("UserMembershipItem", back_populates="user", cascade="all, delete-orphan")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -176,3 +181,23 @@ class SiteConfig(Base):
     key = Column(String, primary_key=True, index=True)
     value = Column(String)
     description = Column(String, nullable=True)
+
+class MembershipItem(Base):
+    __tablename__ = "membership_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+
+    user_items = relationship("UserMembershipItem", back_populates="item", cascade="all, delete-orphan")
+
+class UserMembershipItem(Base):
+    __tablename__ = "user_membership_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    membership_item_id = Column(Integer, ForeignKey("membership_items.id"))
+    is_delivered = Column(Boolean, default=False)
+    delivered_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", back_populates="membership_items")
+    item = relationship("MembershipItem", back_populates="user_items")

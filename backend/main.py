@@ -38,6 +38,34 @@ try:
 except Exception as e:
     print("warning_1h_notified migration skipped:", e)
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN pokemon_player_id VARCHAR;"))
+        print("pokemon_player_id column added.")
+except Exception as e:
+    print("pokemon_player_id migration skipped:", e)
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN one_piece_player_id VARCHAR;"))
+        print("one_piece_player_id column added.")
+except Exception as e:
+    print("one_piece_player_id migration skipped:", e)
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN has_membership BOOLEAN DEFAULT FALSE;"))
+        print("has_membership column added.")
+except Exception as e:
+    print("has_membership migration skipped:", e)
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN membership_status VARCHAR DEFAULT 'Ninguna';"))
+        print("membership_status column added.")
+except Exception as e:
+    print("membership_status migration skipped:", e)
+
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
@@ -233,10 +261,42 @@ def update_user_profile(user_update: schemas.UserUpdate, db: Session = Depends(g
         current_user.whatsapp = user_update.whatsapp
     if user_update.avatar_url is not None:
         current_user.avatar_url = user_update.avatar_url
+    if user_update.pokemon_player_id is not None:
+        current_user.pokemon_player_id = user_update.pokemon_player_id
+    if user_update.one_piece_player_id is not None:
+        current_user.one_piece_player_id = user_update.one_piece_player_id
         
     db.commit()
     db.refresh(current_user)
     return current_user
+
+@app.get("/api/users/me/ranking", tags=["Users", "Ranking"])
+def get_my_ranking(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    active_champ = db.query(models.Championship).filter(models.Championship.is_active == True).first()
+    championship_id = active_champ.id if active_champ else None
+    
+    if not championship_id:
+        return {"position": "-", "total_points": 0}
+        
+    from sqlalchemy import desc, func
+    query = db.query(
+        models.TournamentResult.user_id,
+        func.sum(models.TournamentResult.points).label('total_points')
+    ).join(models.Tournament, models.Tournament.id == models.TournamentResult.tournament_id)
+    
+    query = query.filter(models.Tournament.championship_id == championship_id)
+    ranking_data = query.group_by(models.TournamentResult.user_id).order_by(desc('total_points')).all()
+    
+    position = "-"
+    total_points = 0
+    
+    for idx, r in enumerate(ranking_data):
+        if r.user_id == current_user.id:
+            position = idx + 1
+            total_points = r.total_points
+            break
+            
+    return {"position": str(position), "total_points": total_points}
 
 # --- CATEGORIES ---
 @app.get("/api/categories", response_model=List[schemas.Category], tags=["Categories"])
@@ -1136,3 +1196,89 @@ def update_site_config(payload: schemas.SiteConfigUpdateList, db: Session = Depe
             db.add(new_conf)
     db.commit()
     return {"status": "ok", "message": "Configuración actualizada"}
+
+# --- ADMIN MEMBERSHIPS ---
+@app.get("/api/admin/memberships", response_model=List[schemas.UserMembershipResponse], tags=["Admin Memberships"])
+def get_admin_memberships(db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    return db.query(models.User).all()
+
+@app.get("/api/admin/membership-config-items", response_model=List[schemas.MembershipItem], tags=["Admin Memberships"])
+def get_membership_config_items(db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    return db.query(models.MembershipItem).all()
+
+@app.post("/api/admin/membership-config-items", response_model=schemas.MembershipItem, tags=["Admin Memberships"])
+def create_membership_config_item(item: schemas.MembershipItemCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_item = models.MembershipItem(name=item.name)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    
+    # Auto-link this new item to all users with active memberships
+    active_members = db.query(models.User).filter(models.User.has_membership == True).all()
+    for user in active_members:
+        user_item = models.UserMembershipItem(
+            user_id=user.id,
+            membership_item_id=db_item.id,
+            is_delivered=False
+        )
+        db.add(user_item)
+    db.commit()
+    return db_item
+
+@app.delete("/api/admin/membership-config-items/{item_id}", tags=["Admin Memberships"])
+def delete_membership_config_item(item_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_item = db.query(models.MembershipItem).filter(models.MembershipItem.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item no encontrado")
+    db.delete(db_item)
+    db.commit()
+    return {"status": "ok", "message": "Item eliminado de la configuración"}
+
+@app.put("/api/admin/users/{user_id}/membership", response_model=schemas.UserMembershipResponse, tags=["Admin Memberships"])
+def update_user_membership_status(user_id: int, req: schemas.UserMembershipToggleRequest, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    db_user.has_membership = req.has_membership
+    db_user.membership_status = req.membership_status
+    
+    if req.has_membership:
+        # Make sure the user has UserMembershipItem rows for all defined MembershipItems
+        global_items = db.query(models.MembershipItem).all()
+        for item in global_items:
+            existing = db.query(models.UserMembershipItem).filter(
+                models.UserMembershipItem.user_id == user_id,
+                models.UserMembershipItem.membership_item_id == item.id
+            ).first()
+            if not existing:
+                user_item = models.UserMembershipItem(
+                    user_id=user_id,
+                    membership_item_id=item.id,
+                    is_delivered=False
+                )
+                db.add(user_item)
+    else:
+        # Clean up their membership items when deactivated
+        db.query(models.UserMembershipItem).filter(models.UserMembershipItem.user_id == user_id).delete()
+        
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.post("/api/admin/users/{user_id}/membership-items/{item_id}/toggle", response_model=schemas.UserMembershipItemResponse, tags=["Admin Memberships"])
+def toggle_user_membership_item_delivery(user_id: int, item_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    user_item = db.query(models.UserMembershipItem).filter(
+        models.UserMembershipItem.user_id == user_id,
+        models.UserMembershipItem.membership_item_id == item_id
+    ).first()
+    
+    if not user_item:
+        raise HTTPException(status_code=404, detail="Registro de membresía no encontrado")
+        
+    user_item.is_delivered = not user_item.is_delivered
+    user_item.delivered_at = datetime.now(CR_TZ).replace(tzinfo=None) if user_item.is_delivered else None
+    
+    db.commit()
+    db.refresh(user_item)
+    return user_item
