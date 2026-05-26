@@ -13,6 +13,47 @@ export default function CheckoutPage() {
   const [whatsappNumber, setWhatsappNumber] = useState("+50688111178");
   const [sinpeNumber, setSinpeNumber] = useState("88111178");
 
+  // Promo code states
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [promoError, setPromoError] = useState("");
+  const [promoSuccess, setPromoSuccess] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim()) return;
+    setPromoError("");
+    setPromoSuccess("");
+
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/promo-codes/validate/${promoCodeInput.trim()}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Código promocional inválido");
+      }
+
+      const data = await res.json();
+      setAppliedPromo(data);
+      setPromoSuccess(`¡Código ${data.code} aplicado con éxito!`);
+    } catch (err: any) {
+      setAppliedPromo(null);
+      setPromoError(err.message);
+    }
+  };
+
+  const discountAmount = appliedPromo
+    ? (appliedPromo.discount_type === "percentage"
+      ? Math.round(cartTotal * (appliedPromo.discount_value / 100))
+      : appliedPromo.discount_value)
+    : 0;
+
+  const finalTotal = Math.max(0, cartTotal - discountAmount);
+
   // Verificar sesión y cargar config
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -52,7 +93,10 @@ export default function CheckoutPage() {
       const token = localStorage.getItem("auth_token");
 
       const payload = {
-        total_amount: cartTotal,
+        total_amount: finalTotal,
+        discount_amount: discountAmount,
+        original_total: cartTotal,
+        promo_code: appliedPromo ? appliedPromo.code : undefined,
         payment_method: paymentMethod,
         sale_type: "Online",
         items: cartItems.map(item => ({
@@ -181,10 +225,66 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              <div className="border-t border-white/10 pt-4 mb-6">
-                <div className="flex justify-between items-center text-lg">
+              {/* Sección de Código Promocional */}
+              <div className="border-t border-white/10 pt-6 mb-6">
+                <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-3">
+                  ¿Tienes un código promocional?
+                </label>
+                <div className="flex flex-col gap-2.5">
+                  <input
+                    type="text"
+                    placeholder="Escribe tu código aquí"
+                    value={promoCodeInput}
+                    onChange={e => setPromoCodeInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:border-brand-yellow focus:outline-none uppercase text-center font-bold tracking-wider transition-colors"
+                    disabled={appliedPromo !== null}
+                  />
+                  {appliedPromo ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppliedPromo(null);
+                        setPromoCodeInput("");
+                        setPromoSuccess("");
+                      }}
+                      className="w-full bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 py-3 rounded-xl text-xs font-bold uppercase transition-colors"
+                    >
+                      Remover Código
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      className="w-full bg-brand-yellow hover:bg-brand-yellow/90 text-brand-blue py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
+                    >
+                      Aplicar Código
+                    </button>
+                  )}
+                </div>
+                {promoError && (
+                  <p className="text-red-400 text-xs mt-2 font-bold text-center">{promoError}</p>
+                )}
+                {promoSuccess && (
+                  <p className="text-green-400 text-xs mt-2 font-bold text-center">{promoSuccess}</p>
+                )}
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mb-6 space-y-2">
+                {discountAmount > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-sm text-white/60">
+                      <span>Subtotal</span>
+                      <span className="font-mono">{formatCRC(cartTotal)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-red-400">
+                      <span>Descuento</span>
+                      <span className="font-mono">-{formatCRC(discountAmount)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between items-center text-lg pt-2 border-t border-white/5">
                   <span className="text-white font-bold uppercase tracking-widest">Total</span>
-                  <span className="text-brand-yellow font-black text-2xl">{formatCRC(cartTotal)}</span>
+                  <span className="text-brand-yellow font-black text-2xl">{formatCRC(finalTotal)}</span>
                 </div>
               </div>
 

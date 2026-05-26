@@ -31,6 +31,8 @@ interface Sale {
   origin_ref?: string;
   user_email?: string;
   items: SaleItem[];
+  discount_amount?: number;
+  original_total?: number;
 }
 
 interface ApprovalItem {
@@ -54,6 +56,8 @@ export default function SalesAdmin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [addQuantities, setAddQuantities] = useState<Record<number, number>>({});
   const [buyerEmail, setBuyerEmail] = useState("");
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [discountValue, setDiscountValue] = useState<number>(0);
 
   // History State
   const [sales, setSales] = useState<Sale[]>([]);
@@ -204,11 +208,17 @@ export default function SalesAdmin() {
   const processCheckout = async () => {
     if (cart.length === 0) return;
     
-    const total_amount = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+    const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+    const discountAmount = discountType === "percentage" 
+      ? Math.round(cartTotal * (discountValue / 100)) 
+      : discountValue;
+    const finalTotal = Math.max(0, cartTotal - discountAmount);
     const token = localStorage.getItem("auth_token");
 
     const payload = {
-      total_amount,
+      total_amount: finalTotal,
+      discount_amount: discountAmount,
+      original_total: cartTotal,
       payment_method: paymentMethod,
       sale_type: "POS",
       buyer_email: buyerEmail.trim() || undefined,
@@ -235,6 +245,7 @@ export default function SalesAdmin() {
         toast.success("Venta registrada exitosamente");
         setCart([]);
         setBuyerEmail("");
+        setDiscountValue(0);
         fetchProducts(); // Refresh stock
         fetchSales(); // Refresh history
       } else {
@@ -252,6 +263,10 @@ export default function SalesAdmin() {
   if (loading) return <div className="p-8 text-white">Cargando módulo de ventas...</div>;
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+  const discountAmount = discountType === "percentage" 
+    ? Math.round(cartTotal * (discountValue / 100)) 
+    : discountValue;
+  const finalTotal = Math.max(0, cartTotal - discountAmount);
 
   const filteredProducts = products.filter(p => p.stock > 0 && p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -416,11 +431,79 @@ export default function SalesAdmin() {
                   )}
                 </div>
 
+                {/* Descuentos POS */}
+                {cart.length > 0 && (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
+                    <p className="text-white/60 uppercase text-[10px] font-bold tracking-widest mb-3">Aplicar Descuento</p>
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => { setDiscountType("percentage"); setDiscountValue(0); }}
+                        className={`flex-1 py-1.5 text-xs font-bold uppercase rounded border transition-colors ${discountType === "percentage" ? "bg-brand-yellow/20 border-brand-yellow text-brand-yellow" : "bg-black/20 border-white/10 text-white/60 hover:text-white"}`}
+                      >
+                        Porcentaje (%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDiscountType("fixed"); setDiscountValue(0); }}
+                        className={`flex-1 py-1.5 text-xs font-bold uppercase rounded border transition-colors ${discountType === "fixed" ? "bg-brand-yellow/20 border-brand-yellow text-brand-yellow" : "bg-black/20 border-white/10 text-white/60 hover:text-white"}`}
+                      >
+                        Monto Fijo (₡)
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={discountType === "percentage" ? 100 : cartTotal}
+                        placeholder={discountType === "percentage" ? "Ej. 10%" : "Ej. 1000 ₡"}
+                        value={discountValue || ""}
+                        onChange={e => {
+                          const val = Math.max(0, parseFloat(e.target.value) || 0);
+                          if (discountType === "percentage") {
+                            setDiscountValue(Math.min(100, val));
+                          } else {
+                            setDiscountValue(Math.min(cartTotal, val));
+                          }
+                        }}
+                        className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none flex-grow w-full"
+                      />
+                      <div className="flex gap-1">
+                        {[5, 10, 15, 20].map(pct => (
+                          discountType === "percentage" && (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => setDiscountValue(pct)}
+                              className={`px-2 py-1.5 text-xs font-bold rounded transition-colors ${discountValue === pct ? "bg-brand-yellow text-black" : "bg-white/10 text-white hover:bg-white/20"}`}
+                            >
+                              {pct}%
+                            </button>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Zona de Cobro */}
                 <div className="mt-auto border-t border-brand-yellow/30 pt-6">
+                  {discountAmount > 0 && (
+                    <div className="space-y-1.5 mb-4 text-sm px-1">
+                      <div className="flex justify-between text-white/60">
+                        <span>Subtotal</span>
+                        <span className="font-mono">{formatCRC(cartTotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-red-400">
+                        <span>Descuento ({discountType === "percentage" ? `${discountValue}%` : "Monto"})</span>
+                        <span className="font-mono">-{formatCRC(discountAmount)}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-end mb-6 bg-brand-yellow/5 p-4 rounded-xl border border-brand-yellow/10">
                     <span className="text-brand-yellow uppercase text-xs font-black tracking-widest">Total a Cobrar</span>
-                    <span className="text-4xl font-black text-brand-yellow">{formatCRC(cartTotal)}</span>
+                    <span className="text-4xl font-black text-brand-yellow">{formatCRC(finalTotal)}</span>
                   </div>
 
                   <p className="text-white/60 uppercase text-[10px] font-bold tracking-widest mb-3">Método de Pago</p>
@@ -565,7 +648,22 @@ export default function SalesAdmin() {
                           </span>
                         </td>
                         <td className="py-4 text-white/60">{sale.payment_method}</td>
-                        <td className="py-4 text-brand-yellow font-black text-right">{formatCRC(sale.total_amount)}</td>
+                        <td className="py-4 text-brand-yellow font-black text-right">
+                          {sale.discount_amount && sale.discount_amount > 0 ? (
+                            <div className="flex flex-col items-end">
+                              <span className="text-white/40 text-[10px] line-through font-normal font-mono">
+                                {formatCRC(sale.original_total || sale.total_amount + sale.discount_amount)}
+                              </span>
+                              <span>{formatCRC(sale.total_amount)}</span>
+                              <span className="text-red-400 text-[9px] font-bold mt-0.5">
+                                -{formatCRC(sale.discount_amount)}
+                                {sale.promo_code ? ` (${sale.promo_code})` : ""}
+                              </span>
+                            </div>
+                          ) : (
+                            formatCRC(sale.total_amount)
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

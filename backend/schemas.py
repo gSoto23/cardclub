@@ -254,6 +254,9 @@ class SaleBase(BaseModel):
     sale_type: str
     user_id: Optional[int] = None
     origin_ref: Optional[str] = None
+    discount_amount: Optional[float] = 0.0
+    promo_code: Optional[str] = None
+    original_total: Optional[float] = None
 
 class SaleCreate(SaleBase):
     items: List[SaleItemCreate]
@@ -324,3 +327,31 @@ class UserMembershipResponse(BaseModel):
 class UserMembershipToggleRequest(BaseModel):
     has_membership: bool
     membership_status: str  # "Activa", "Vencida", "Ninguna"
+
+# --- PROMO CODES ---
+class PromoCodeBase(BaseModel):
+    code: str
+    discount_type: str # "percentage" or "fixed"
+    discount_value: float
+    is_active: Optional[bool] = True
+    expiration_date: Optional[datetime] = None
+    max_uses: Optional[int] = None
+
+class PromoCodeCreate(PromoCodeBase):
+    pass
+
+class PromoCodeUpdate(BaseModel):
+    code: Optional[str] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[float] = None
+    is_active: Optional[bool] = None
+    expiration_date: Optional[datetime] = None
+    max_uses: Optional[int] = None
+
+class PromoCode(PromoCodeBase):
+    id: int
+    uses_count: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True

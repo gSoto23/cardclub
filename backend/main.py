@@ -66,6 +66,27 @@ try:
 except Exception as e:
     print("membership_status migration skipped:", e)
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE sales ADD COLUMN discount_amount FLOAT DEFAULT 0.0;"))
+        print("discount_amount column added to sales.")
+except Exception as e:
+    print("discount_amount migration skipped:", e)
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE sales ADD COLUMN promo_code VARCHAR;"))
+        print("promo_code column added to sales.")
+except Exception as e:
+    print("promo_code migration skipped:", e)
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE sales ADD COLUMN original_total FLOAT;"))
+        print("original_total column added to sales.")
+except Exception as e:
+    print("original_total migration skipped:", e)
+
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
@@ -824,7 +845,10 @@ def create_sale(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db:
         total_amount=sale.total_amount,
         payment_method=sale.payment_method,
         sale_type=sale.sale_type,
-        status="Completado"
+        status="Completado",
+        discount_amount=sale.discount_amount or 0.0,
+        promo_code=sale.promo_code,
+        original_total=sale.original_total or sale.total_amount
     )
     db.add(db_sale)
     db.commit()
@@ -1015,12 +1039,44 @@ def process_checkout(sale: schemas.SaleCreate, background_tasks: BackgroundTasks
             # Use actual database price for security
             calculated_total += product.price * item.quantity
 
+    # Apply promo code discount if provided
+    discount_amount = 0.0
+    promo_code_applied = None
+    if sale.promo_code:
+        normalized_code = sale.promo_code.strip().upper()
+        promo = db.query(models.PromoCode).filter(models.PromoCode.code == normalized_code).first()
+        if not promo:
+            raise HTTPException(status_code=400, detail="Código promocional no válido")
+        if not promo.is_active:
+            raise HTTPException(status_code=400, detail="Código promocional inactivo")
+        
+        now = datetime.now(CR_TZ).replace(tzinfo=None)
+        if promo.expiration_date and promo.expiration_date < now:
+            raise HTTPException(status_code=400, detail="Código promocional expirado")
+        if promo.max_uses is not None and promo.uses_count >= promo.max_uses:
+            raise HTTPException(status_code=400, detail="Código promocional agotado")
+            
+        if promo.discount_type == "percentage":
+            discount_amount = calculated_total * (promo.discount_value / 100.0)
+        else:
+            discount_amount = promo.discount_value
+            
+        # Cap discount at total amount
+        discount_amount = min(discount_amount, calculated_total)
+        promo.uses_count += 1
+        promo_code_applied = promo.code
+
+    final_total = calculated_total - discount_amount
+
     db_sale = models.Sale(
         user_id=current_user.id,
-        total_amount=calculated_total,
+        total_amount=final_total,
         payment_method=sale.payment_method,
         sale_type="Online",
-        status="Pendiente"
+        status="Pendiente",
+        discount_amount=discount_amount,
+        promo_code=promo_code_applied,
+        original_total=calculated_total
     )
     db.add(db_sale)
     db.commit()
@@ -1047,7 +1103,7 @@ def process_checkout(sale: schemas.SaleCreate, background_tasks: BackgroundTasks
         email_sender.send_purchase_email,
         to_email=current_user.email,
         user_name=current_user.nickname or current_user.full_name or "Coleccionista",
-        total=calculated_total,
+        total=final_total,
         items_count=len(sale.items),
         payment_method=sale.payment_method
     )
@@ -1282,3 +1338,91 @@ def toggle_user_membership_item_delivery(user_id: int, item_id: int, db: Session
     db.commit()
     db.refresh(user_item)
     return user_item
+
+# --- PROMO CODES ---
+@app.get("/api/admin/promo-codes", response_model=List[schemas.PromoCode], tags=["Promo Codes"])
+def get_admin_promo_codes(db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    return db.query(models.PromoCode).order_by(models.PromoCode.created_at.desc()).all()
+
+@app.post("/api/admin/promo-codes", response_model=schemas.PromoCode, tags=["Promo Codes"])
+def create_promo_code(payload: schemas.PromoCodeCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    normalized_code = payload.code.strip().upper()
+    existing = db.query(models.PromoCode).filter(models.PromoCode.code == normalized_code).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="El código promocional ya existe")
+    
+    expiration_date = payload.expiration_date
+    if expiration_date and expiration_date.tzinfo:
+        expiration_date = expiration_date.astimezone(CR_TZ).replace(tzinfo=None)
+
+    db_promo = models.PromoCode(
+        code=normalized_code,
+        discount_type=payload.discount_type,
+        discount_value=payload.discount_value,
+        is_active=payload.is_active,
+        expiration_date=expiration_date,
+        max_uses=payload.max_uses
+    )
+    db.add(db_promo)
+    db.commit()
+    db.refresh(db_promo)
+    return db_promo
+
+@app.put("/api/admin/promo-codes/{promo_id}", response_model=schemas.PromoCode, tags=["Promo Codes"])
+def update_promo_code(promo_id: int, payload: schemas.PromoCodeUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_promo = db.query(models.PromoCode).filter(models.PromoCode.id == promo_id).first()
+    if not db_promo:
+        raise HTTPException(status_code=404, detail="Código promocional no encontrado")
+        
+    update_data = payload.dict(exclude_unset=True)
+    if 'code' in update_data and update_data['code']:
+        normalized_code = update_data['code'].strip().upper()
+        existing = db.query(models.PromoCode).filter(models.PromoCode.code == normalized_code, models.PromoCode.id != promo_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="El código promocional ya existe")
+        db_promo.code = normalized_code
+        
+    if 'expiration_date' in update_data and update_data['expiration_date']:
+        expiration_date = update_data['expiration_date']
+        if expiration_date.tzinfo:
+            expiration_date = expiration_date.astimezone(CR_TZ).replace(tzinfo=None)
+        db_promo.expiration_date = expiration_date
+    elif 'expiration_date' in update_data:
+        db_promo.expiration_date = None
+
+    for key, value in update_data.items():
+        if key not in ['code', 'expiration_date']:
+            setattr(db_promo, key, value)
+            
+    db.commit()
+    db.refresh(db_promo)
+    return db_promo
+
+@app.delete("/api/admin/promo-codes/{promo_id}", tags=["Promo Codes"])
+def delete_promo_code(promo_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_promo = db.query(models.PromoCode).filter(models.PromoCode.id == promo_id).first()
+    if not db_promo:
+        raise HTTPException(status_code=404, detail="Código promocional no encontrado")
+    db.delete(db_promo)
+    db.commit()
+    return {"status": "ok", "message": "Código promocional eliminado"}
+
+@app.get("/api/promo-codes/validate/{code}", response_model=schemas.PromoCode, tags=["Promo Codes"])
+def validate_promo_code(code: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    normalized_code = code.strip().upper()
+    db_promo = db.query(models.PromoCode).filter(models.PromoCode.code == normalized_code).first()
+    
+    if not db_promo:
+        raise HTTPException(status_code=404, detail="Código promocional no encontrado")
+        
+    if not db_promo.is_active:
+        raise HTTPException(status_code=400, detail="El código promocional no está activo")
+        
+    now = datetime.now(CR_TZ).replace(tzinfo=None)
+    if db_promo.expiration_date and db_promo.expiration_date < now:
+        raise HTTPException(status_code=400, detail="El código promocional ha expirado")
+        
+    if db_promo.max_uses is not None and db_promo.uses_count >= db_promo.max_uses:
+        raise HTTPException(status_code=400, detail="El código promocional ha alcanzado su límite de usos")
+        
+    return db_promo

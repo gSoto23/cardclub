@@ -154,6 +154,9 @@ class Sale(Base):
     sale_type = Column(String) # "POS", "Torneo", "Subasta"
     sale_date = Column(DateTime, default=lambda: datetime.now(CR_TZ).replace(tzinfo=None))
     origin_ref = Column(String, nullable=True)
+    discount_amount = Column(Float, default=0.0)
+    promo_code = Column(String, nullable=True)
+    original_total = Column(Float, nullable=True)
 
     items = relationship("SaleItem", back_populates="sale")
     user = relationship("User")
@@ -201,3 +204,16 @@ class UserMembershipItem(Base):
 
     user = relationship("User", back_populates="membership_items")
     item = relationship("MembershipItem", back_populates="user_items")
+
+class PromoCode(Base):
+    __tablename__ = "promo_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True)
+    discount_type = Column(String) # "percentage", "fixed"
+    discount_value = Column(Float)
+    is_active = Column(Boolean, default=True)
+    expiration_date = Column(DateTime, nullable=True)
+    max_uses = Column(Integer, nullable=True)
+    uses_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(CR_TZ).replace(tzinfo=None))
