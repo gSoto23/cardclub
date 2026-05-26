@@ -33,6 +33,7 @@ interface Sale {
   items: SaleItem[];
   discount_amount?: number;
   original_total?: number;
+  promo_code?: string;
 }
 
 interface ApprovalItem {
