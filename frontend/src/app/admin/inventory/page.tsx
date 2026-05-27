@@ -299,107 +299,120 @@ export default function InventoryAdmin() {
         </div>
 
         {showForm && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-md animate-in fade-in slide-in-from-top-4">
-            <h2 className="text-xl font-bold text-white mb-4">
-              {editingProductId ? "Editar Producto" : "Añadir Nuevo Producto"}
-            </h2>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Nombre de Carta</label>
-                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
-              </div>
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-brand-blue border border-white/10 rounded-2xl p-6 md:p-8 max-w-4xl w-full shadow-2xl relative my-8 animate-in fade-in zoom-in-95 duration-200">
+              {/* Close Button */}
+              <button 
+                type="button" 
+                onClick={() => { setShowForm(false); resetForm(); }}
+                className="absolute top-4 right-4 text-white/40 hover:text-white text-2xl font-bold bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer"
+              >
+                &times;
+              </button>
 
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Juego (TCG)</label>
-                <input type="text" required value={formData.game} onChange={e => setFormData({...formData, game: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
-              </div>
+              <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-6 pb-2 border-b border-white/10">
+                {editingProductId ? "Editar Producto" : "Añadir Nuevo Producto"}
+              </h2>
 
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Set de Expansión</label>
-                <input type="text" required value={formData.expansion_set} onChange={e => setFormData({...formData, expansion_set: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Condición</label>
-                <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white">
-                  <option value="Sealed">Sealed (Sellado)</option>
-                  <option value="NM">Near Mint (NM)</option>
-                  <option value="LP">Lightly Played (LP)</option>
-                  <option value="MP">Moderately Played (MP)</option>
-                  <option value="HP">Heavily Played (HP)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Categoría</label>
-                <div className="flex gap-2">
-                  <select value={formData.category_id} onChange={e => setFormData({...formData, category_id: parseInt(e.target.value)})} className="flex-grow bg-black/40 border border-white/10 rounded p-2 text-white">
-                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                  </select>
-                  <Button variant="ghost" type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)}>+</Button>
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[75vh] overflow-y-auto pr-2">
+                
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Nombre de Carta</label>
+                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
                 </div>
-                {isCreatingCategory && (
-                  <div className="flex gap-2 mt-2">
-                    <input type="text" placeholder="Nueva Categoría" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-grow bg-black/40 border border-brand-yellow/30 rounded p-2 text-white text-sm" />
-                    <Button variant="primary" type="button" size="sm" onClick={handleCreateCategory}>Crear</Button>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Juego (TCG)</label>
+                  <input type="text" required value={formData.game} onChange={e => setFormData({...formData, game: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Set de Expansión</label>
+                  <input type="text" required value={formData.expansion_set} onChange={e => setFormData({...formData, expansion_set: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Condición</label>
+                  <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white">
+                    <option value="Sealed">Sealed (Sellado)</option>
+                    <option value="NM">Near Mint (NM)</option>
+                    <option value="LP">Lightly Played (LP)</option>
+                    <option value="MP">Moderately Played (MP)</option>
+                    <option value="HP">Heavily Played (HP)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Categoría</label>
+                  <div className="flex gap-2">
+                    <select value={formData.category_id} onChange={e => setFormData({...formData, category_id: parseInt(e.target.value)})} className="flex-grow bg-black/40 border border-white/10 rounded p-2 text-white">
+                      {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    </select>
+                    <Button variant="ghost" type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)}>+</Button>
                   </div>
-                )}
-              </div>
+                  {isCreatingCategory && (
+                    <div className="flex gap-2 mt-2">
+                      <input type="text" placeholder="Nueva Categoría" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-grow bg-black/40 border border-brand-yellow/30 rounded p-2 text-white text-sm" />
+                      <Button variant="primary" type="button" size="sm" onClick={handleCreateCategory}>Crear</Button>
+                    </div>
+                  )}
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Precio de Compra (CRC)</label>
-                <input type="number" required min="0" value={Number.isNaN(formData.purchase_price) ? "" : formData.purchase_price} onChange={e => setFormData({...formData, purchase_price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
-              </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Precio de Compra (CRC)</label>
+                  <input type="number" required min="0" value={Number.isNaN(formData.purchase_price) ? "" : formData.purchase_price} onChange={e => setFormData({...formData, purchase_price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Precio de Venta (CRC)</label>
-                <input type="number" required min="0" value={Number.isNaN(formData.price) ? "" : formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
-              </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Precio de Venta (CRC)</label>
+                  <input type="number" required min="0" value={Number.isNaN(formData.price) ? "" : formData.price} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Imagen del Producto</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={e => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setImageFile(e.target.files[0]);
-                    }
-                  }} 
-                  className="w-full bg-black/40 border border-white/10 rounded p-1.5 text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-brand-yellow file:text-brand-blue hover:file:bg-yellow-300" 
-                />
-              </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Imagen del Producto</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={e => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setImageFile(e.target.files[0]);
+                      }
+                    }} 
+                    className="w-full bg-black/40 border border-white/10 rounded p-1.5 text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-brand-yellow file:text-brand-blue hover:file:bg-yellow-300" 
+                  />
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-white/60 font-bold uppercase">Stock</label>
-                <input type="number" required min="1" value={Number.isNaN(formData.stock) ? "" : formData.stock} onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
-              </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Stock</label>
+                  <input type="number" required min="1" value={Number.isNaN(formData.stock) ? "" : formData.stock} onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                </div>
 
-              <div className="space-y-1 flex items-center gap-2 pt-6">
-                <input type="checkbox" checked={formData.is_foil} onChange={e => setFormData({...formData, is_foil: e.target.checked})} className="w-4 h-4" />
-                <label className="text-xs text-brand-yellow font-bold uppercase">¿Es carta Foil / Holográfica?</label>
-              </div>
+                <div className="space-y-1 flex items-center gap-2 pt-6">
+                  <input type="checkbox" checked={formData.is_foil} onChange={e => setFormData({...formData, is_foil: e.target.checked})} className="w-4 h-4" />
+                  <label className="text-xs text-brand-yellow font-bold uppercase">¿Es carta Foil / Holográfica?</label>
+                </div>
 
-              <div className="space-y-1 flex items-center gap-2 pt-6">
-                <input type="checkbox" checked={formData.is_auction_only} onChange={e => setFormData({...formData, is_auction_only: e.target.checked})} className="w-4 h-4" />
-                <label className="text-xs text-purple-400 font-bold uppercase" title="Ocultar del Mercado y POS. Visible solo al crear Subastas.">Solo Subastas</label>
-              </div>
+                <div className="space-y-1 flex items-center gap-2 pt-6">
+                  <input type="checkbox" checked={formData.is_auction_only} onChange={e => setFormData({...formData, is_auction_only: e.target.checked})} className="w-4 h-4" />
+                  <label className="text-xs text-purple-400 font-bold uppercase" title="Ocultar del Mercado y POS. Visible solo al crear Subastas.">Solo Subastas</label>
+                </div>
 
-              <div className="space-y-1 flex items-center gap-2 pt-6">
-                <input type="checkbox" checked={formData.is_pos_only} onChange={e => setFormData({...formData, is_pos_only: e.target.checked})} className="w-4 h-4" />
-                <label className="text-xs text-blue-400 font-bold uppercase" title="Ocultar del Mercado Web. Solo visible para cobrar en POS local.">Solo POS (Tienda Física)</label>
-              </div>
+                <div className="space-y-1 flex items-center gap-2 pt-6">
+                  <input type="checkbox" checked={formData.is_pos_only} onChange={e => setFormData({...formData, is_pos_only: e.target.checked})} className="w-4 h-4" />
+                  <label className="text-xs text-blue-400 font-bold uppercase" title="Ocultar del Mercado Web. Solo visible para cobrar en POS local.">Solo POS (Tienda Física)</label>
+                </div>
 
-              <div className="md:col-span-2 lg:col-span-3 mt-4 flex justify-end gap-3">
-                <Button variant="ghost" type="button" onClick={() => {setShowForm(false); resetForm();}}>Cancelar</Button>
-                <Button variant="primary" type="submit">
-                  {editingProductId ? "Guardar Cambios" : "Guardar Producto"}
-                </Button>
-              </div>
-            </form>
+                <div className="md:col-span-2 lg:col-span-3 mt-4 flex justify-end gap-3 border-t border-white/10 pt-4">
+                  <Button variant="ghost" type="button" onClick={() => {setShowForm(false); resetForm();}}>Cancelar</Button>
+                  <Button variant="primary" type="submit">
+                    {editingProductId ? "Guardar Cambios" : "Guardar Producto"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
+
 
         {/* Panel de Filtros */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between backdrop-blur-md">
