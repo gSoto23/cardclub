@@ -67,7 +67,7 @@ export default function CheckoutPage() {
       .then((data: any[]) => {
         const wa = data.find(c => c.key === 'social_whatsapp')?.value;
         const sinpe = data.find(c => c.key === 'sinpe_number')?.value;
-        
+
         if (wa) {
           // Extraer número de link wa.me o usar valor directo si es número
           const match = wa.match(/wa\.me\/(\d+)/);
@@ -233,7 +233,7 @@ export default function CheckoutPage() {
                 <div className="flex flex-col gap-2.5">
                   <input
                     type="text"
-                    placeholder="Escribe tu código aquí"
+                    placeholder="Código aquí"
                     value={promoCodeInput}
                     onChange={e => setPromoCodeInput(e.target.value)}
                     className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:border-brand-yellow focus:outline-none uppercase text-center font-bold tracking-wider transition-colors"

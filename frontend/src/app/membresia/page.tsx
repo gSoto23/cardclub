@@ -32,7 +32,7 @@ export default async function MembershipPage() {
             <img 
               src={banner} 
               alt="Banner de Membresía Card Club" 
-              className="w-full rounded-xl shadow-[0_0_30px_rgba(255,222,0,0.15)] border border-brand-yellow/20 mb-8 transform hover:scale-[1.01] transition-transform duration-300 max-h-[380px] object-cover"
+              className="w-full h-auto rounded-xl shadow-[0_0_30px_rgba(255,222,0,0.15)] border border-brand-yellow/20 mb-8 transform hover:scale-[1.01] transition-transform duration-300"
             />
           )}
           <div 
