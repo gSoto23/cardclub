@@ -10,7 +10,7 @@ export const Header = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  
+
   const { cartItems, cartCount, cartTotal, removeFromCart, updateQuantity } = useCart();
 
   useEffect(() => {
@@ -34,44 +34,44 @@ export const Header = () => {
   return (
     <>
       <header className="sticky top-0 z-50 bg-brand-blue/90 backdrop-blur-md border-b border-white/10 transition-all">
-        <div className="container mx-auto px-4 md:px-6 py-4 md:py-6 flex items-center justify-between">
+        <div className="container mx-auto px-4 lg:px-6 py-2.5 lg:py-3.5 flex items-center justify-between">
           {/* Logo Gamer/Creative */}
           <Link href="/" className="flex items-center group" onClick={() => setIsMobileMenuOpen(false)}>
-            <img src="/logo.png" alt="Card Club" className="h-[60px] md:h-[88px] w-auto object-contain group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(255,222,0,0.5)] transition-all flex-shrink-0" />
+            <img src="/logo.png" alt="Card Club" className="h-[52px] md:h-[64px] lg:h-[72px] xl:h-[80px] w-auto object-contain group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(255,222,0,0.5)] transition-all flex-shrink-0" />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-8 font-bold text-sm tracking-widest uppercase text-white/80">
-            <Link href="/tienda" className="hover:text-brand-yellow hover:scale-105 transition-all">
-              Shop Tienda
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-7 font-bold text-xs xl:text-sm tracking-wider xl:tracking-widest uppercase text-white/80">
+            <Link href="/tienda" className="hover:text-brand-yellow hover:scale-105 transition-all duration-300">
+              Tienda
             </Link>
-            <Link href="/subastas" className="flex items-center gap-2 text-brand-yellow hover:text-yellow-300 hover:scale-105 transition-all">
+            <Link href="/torneos" className="hover:text-brand-yellow hover:scale-105 transition-all duration-300">
+              Torneos y Eventos
+            </Link>
+            <Link href="/ranking" className="hover:text-brand-yellow hover:scale-105 transition-all duration-300">
+              Ranking
+            </Link>
+            <Link href="/membresia" className="hover:text-brand-yellow hover:scale-105 transition-all duration-300">
+              Membresía
+            </Link>
+            <Link href="/subastas" className="flex items-center gap-1.5 hover:text-brand-yellow hover:scale-105 transition-all duration-300">
               <span className="flex h-2.5 w-2.5 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-yellow opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-yellow shadow-[0_0_8px_rgba(255,222,0,0.8)]"></span>
               </span>
-              Subastas en Vivo
-            </Link>
-            <Link href="/torneos" className="hover:text-brand-yellow hover:scale-105 transition-all">
-              Calendario de eventos
-            </Link>
-            <Link href="/ranking" className="hover:text-brand-yellow hover:scale-105 transition-all">
-              Ranking
-            </Link>
-            <Link href="/membresia" className="hover:text-brand-yellow hover:scale-105 transition-all text-brand-yellow">
-              Membresía
+              Subastas
             </Link>
           </nav>
 
           {/* Actions (Desktop) & Hamburger (Mobile) */}
-          <div className="flex items-center gap-3">
-            
+          <div className="flex items-center gap-2 xl:gap-3">
+
             {/* Cart Button */}
-            <button 
+            <button
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 text-white/80 hover:text-brand-yellow transition-colors mr-2 lg:mr-0"
+              className="relative p-2 text-white/80 hover:text-brand-yellow transition-colors mr-1 lg:mr-0"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>
               {cartCount > 0 && (
                 <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full transform translate-x-1 -translate-y-1">
                   {cartCount}
@@ -79,7 +79,7 @@ export const Header = () => {
               )}
             </button>
 
-            <div className="hidden lg:flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-2 xl:gap-3">
               {isLoggedIn ? (
                 <Link href={userRole === "admin" ? "/admin/dashboard" : "/lounge"}>
                   <Button variant="primary" size="sm">
@@ -95,15 +95,15 @@ export const Header = () => {
                   </Link>
                   <Link href="/login">
                     <Button variant="primary" size="sm">
-                      Jugar Ahora
+                      LOGIN
                     </Button>
                   </Link>
                 </>
               )}
             </div>
-            
+
             {/* Mobile Menu Button */}
-            <button 
+            <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden w-10 h-10 flex flex-col items-center justify-center gap-1.5 text-brand-yellow hover:scale-105 transition-transform ml-2 focus:outline-none z-50"
             >
@@ -116,29 +116,29 @@ export const Header = () => {
 
         {/* Mobile Menu Overlay */}
         {isMobileMenuOpen && (
-          <div className="absolute top-16 left-0 w-full h-[calc(100vh-4rem)] bg-brand-blue/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center justify-center gap-8 lg:hidden animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="absolute top-[72px] md:top-[84px] left-0 w-full h-[calc(100vh-4.5rem)] bg-brand-blue/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center justify-center gap-8 lg:hidden animate-in fade-in slide-in-from-top-4 duration-300">
             <nav className="flex flex-col items-center gap-8 font-black text-xl tracking-widest uppercase text-white">
               <Link href="/tienda" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                Shop Tienda
-              </Link>
-              <Link href="/subastas" className="text-brand-yellow hover:text-yellow-300 transition-colors flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                <span className="flex h-3 w-3 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-yellow opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-yellow shadow-[0_0_8px_rgba(255,222,0,0.8)]"></span>
-                </span>
-                Subastas en Vivo
+                Tienda
               </Link>
               <Link href="/torneos" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                Calendario de eventos
+                Torneos y Eventos
               </Link>
               <Link href="/ranking" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Ranking
               </Link>
-              <Link href="/membresia" className="text-brand-yellow hover:text-yellow-300 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+              <Link href="/membresia" className="hover:text-brand-yellow transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Membresía
               </Link>
+              <Link href="/subastas" className="hover:text-brand-yellow transition-colors flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+                <span className="flex h-3 w-3 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-yellow opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-yellow shadow-[0_0_8px_rgba(255,222,0,0.8)]"></span>
+                </span>
+                Subastas
+              </Link>
             </nav>
-            
+
             <div className="flex flex-col items-center gap-4 w-full px-8 mt-4">
               {isLoggedIn ? (
                 <Link href={userRole === "admin" ? "/admin/dashboard" : "/lounge"} className="w-full">
@@ -155,7 +155,7 @@ export const Header = () => {
                   </Link>
                   <Link href="/login" className="w-full">
                     <Button variant="primary" size="lg" className="w-full shadow-[0_0_20px_rgba(255,222,0,0.3)]" onClick={() => setIsMobileMenuOpen(false)}>
-                      Jugar Ahora
+                      LOGIN
                     </Button>
                   </Link>
                 </>
@@ -176,11 +176,11 @@ export const Header = () => {
               </h2>
               <button onClick={() => setIsCartOpen(false)} className="text-white/60 hover:text-white p-2">✕</button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-brand-blue">
               {cartItems.length === 0 ? (
                 <div className="text-center text-white/40 mt-20">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-4 opacity-50"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-4 opacity-50"><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>
                   <p>Tu carrito está vacío.</p>
                 </div>
               ) : (
@@ -190,18 +190,18 @@ export const Header = () => {
                     <div className="flex-1 flex flex-col">
                       <h4 className="text-white font-bold text-sm line-clamp-2 pr-6">{item.name}</h4>
                       <p className="text-brand-yellow font-mono text-sm mt-auto">{formatCRC(item.price)}</p>
-                      
+
                       <div className="flex items-center gap-3 mt-2">
                         <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-6 h-6 rounded bg-white/10 text-white hover:bg-white/20 flex items-center justify-center text-xs">-</button>
                         <span className="text-white text-xs font-bold">{item.quantity}</span>
                         <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-6 h-6 rounded bg-white/10 text-white hover:bg-white/20 flex items-center justify-center text-xs">+</button>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => removeFromCart(item.id)}
                       className="absolute top-2 right-2 text-white/20 hover:text-red-400 p-1 transition-colors"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                     </button>
                   </div>
                 ))

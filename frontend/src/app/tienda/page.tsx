@@ -23,7 +23,7 @@ export default async function TiendaPage() {
       {/* Cabecera de la Tienda */}
       <div className="mb-12 border-b border-white/10 pb-8">
         <h1 className="text-4xl md:text-5xl font-black text-white uppercase italic tracking-tighter mb-4">
-          Shop <span className="text-brand-yellow">Tienda</span>
+          <span className="text-brand-yellow">Tienda</span>
         </h1>
         <p className="text-white/60 text-lg">
           Encuentra las mejores singles y productos sellados de tus TCGs favoritos sin salir de casa.

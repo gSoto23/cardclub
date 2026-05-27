@@ -522,8 +522,16 @@ def delete_auction(auction_id: int, db: Session = Depends(get_db), current_admin
 def get_championships(db: Session = Depends(get_db)):
     return db.query(models.Championship).all()
 
+@app.get("/api/championships/active", response_model=Optional[schemas.Championship], tags=["Championships"])
+def get_active_championship(db: Session = Depends(get_db)):
+    active_champ = db.query(models.Championship).filter(models.Championship.is_active == True).first()
+    return active_champ
+
 @app.post("/api/championships", response_model=schemas.Championship, tags=["Championships"])
 def create_championship(championship: schemas.ChampionshipCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    if championship.is_active:
+        # Desactivar todos los demás
+        db.query(models.Championship).update({"is_active": False})
     db_championship = models.Championship(**championship.dict())
     db.add(db_championship)
     db.commit()
@@ -537,6 +545,10 @@ def update_championship(championship_id: int, championship_update: schemas.Champ
         raise HTTPException(status_code=404, detail="Campeonato no encontrado")
     
     update_data = championship_update.dict(exclude_unset=True)
+    if update_data.get("is_active"):
+        # Desactivar todos los demás si este se va a activar
+        db.query(models.Championship).filter(models.Championship.id != championship_id).update({"is_active": False})
+        
     for key, value in update_data.items():
         setattr(db_championship, key, value)
         

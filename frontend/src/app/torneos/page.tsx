@@ -14,12 +14,23 @@ interface Tournament {
   is_active: boolean;
   is_virtual: boolean;
   registered_count: number;
+  registered_players: string[];
 }
 
 export default function TorneosPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Dropdowns state
+  const [openDropdowns, setOpenDropdowns] = useState<{[key: number]: boolean}>({});
+
+  const toggleDropdown = (id: number) => {
+    setOpenDropdowns(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   // Modal State
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
@@ -109,10 +120,10 @@ export default function TorneosPage() {
       {/* Cabecera */}
       <div className="mb-8 border-b border-white/10 pb-8 text-center md:text-left">
         <h1 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter mb-4 drop-shadow-[0_0_15px_rgba(255,222,0,0.2)]">
-          Calendario <span className="text-brand-yellow">Competitivo</span>
+          <span className="text-brand-yellow">Calendario</span>
         </h1>
         <p className="text-white/60 text-lg max-w-2xl mb-8">
-          Particia en nuestros eventos oficiales, Torneos competitivos, aprende a jugar en nuestra escuelita pokemon y mantente al tanto de nuestras otras actividades.
+          Participá en nuestros eventos oficiales, torneos competitivos y clases para aprender a jugar. Además, mantenete al tanto de todas nuestras actividades.
         </p>
         {/* Filtro por Mes */}
         {tournaments.length > 0 && (
@@ -187,6 +198,42 @@ export default function TorneosPage() {
                         {t.registered_count}<span className="text-white/40">/{t.max_players}</span>
                       </span>
                     </div>
+                  </div>
+
+                  {/* Dropdown de Inscritos */}
+                  <div className="mt-3">
+                    <button 
+                      onClick={() => toggleDropdown(t.id)}
+                      className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 flex items-center justify-between text-xs text-white/80 font-bold transition-all uppercase tracking-wider"
+                    >
+                      <span>Ver Inscritos ({t.registered_players?.length || 0})</span>
+                      <svg 
+                        className={`w-4 h-4 transition-transform duration-200 ${openDropdowns[t.id] ? "rotate-180" : ""}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {openDropdowns[t.id] && (
+                      <div className="mt-2 bg-black/40 border border-white/5 rounded-lg p-3 max-h-[150px] overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {t.registered_players && t.registered_players.length > 0 ? (
+                          t.registered_players.map((player, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-xs text-white/80 font-medium py-1 px-2 hover:bg-white/5 rounded transition-colors">
+                              <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow"></span>
+                              <span>{player}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-[11px] text-white/40 text-center py-2 font-medium italic">
+                            No hay jugadores inscritos aún
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-auto pt-6 flex justify-between items-end">

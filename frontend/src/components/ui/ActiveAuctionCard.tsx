@@ -107,7 +107,7 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
       window.location.href = "/login";
       return;
     }
-    
+
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       const newBid = currentPrice + selectedIncrement;
       ws.current.send(JSON.stringify({
@@ -119,7 +119,7 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
 
   return (
     <div className={`relative bg-white/5 border rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${isFlashing ? 'border-brand-yellow shadow-[0_0_30px_rgba(255,222,0,0.4)] scale-[1.02]' : 'border-white/10 hover:border-brand-yellow/30'}`}>
-      
+
       {/* IMAGEN DEL PRODUCTO (Prioridad) */}
       <div className="relative w-full aspect-[4/3] bg-black/40 group overflow-hidden">
         {/* Etiqueta de Estado */}
@@ -129,10 +129,10 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
         </div>
 
         {initialAuction.image_url ? (
-          <img 
-            src={initialAuction.image_url} 
-            alt={initialAuction.product_name} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+          <img
+            src={initialAuction.image_url}
+            alt={initialAuction.product_name}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-white/20 text-xl font-black uppercase">NO IMAGE</div>
@@ -148,7 +148,7 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
       {/* Contenido */}
       <div className="p-5 flex flex-col flex-grow">
         <h3 className="text-white font-black text-xl leading-tight mb-3">{initialAuction.product_name}</h3>
-        
+
         {/* Tags */}
         <div className="flex flex-wrap gap-2 mb-4">
           {initialAuction.condition && (
@@ -167,7 +167,7 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
             </span>
           )}
         </div>
-        
+
         <div className="mt-auto border-t border-white/10 pt-4 flex flex-col items-center">
           <p className="text-white/60 text-sm uppercase tracking-widest mb-1">Puja Actual</p>
           <div className={`text-4xl font-black transition-colors duration-300 ${isFlashing ? 'text-brand-yellow' : 'text-white'}`}>
@@ -191,9 +191,9 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
             ))}
           </div>
         )}
-        <Button 
-          variant="primary" 
-          className="w-full py-4 text-lg shadow-[0_0_15px_rgba(255,222,0,0.2)]" 
+        <Button
+          variant="primary"
+          className="w-full py-4 text-lg shadow-[0_0_15px_rgba(255,222,0,0.2)]"
           onClick={placeBid}
           disabled={timeLeft === "Finalizado"}
         >

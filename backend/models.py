@@ -115,8 +115,16 @@ class Tournament(Base):
 
     @property
     def registered_count(self):
-        actual_count = len(self.registrations) if self.registrations else 0
-        return max(3, actual_count)
+        return len(self.registrations) if self.registrations else 0
+
+    @property
+    def registered_players(self):
+        if not self.registrations:
+            return []
+        return [
+            (reg.user.nickname or reg.user.full_name or reg.user.email.split('@')[0])
+            for reg in self.registrations if reg.user
+        ]
 
 class TournamentRegistration(Base):
     __tablename__ = "tournament_registrations"

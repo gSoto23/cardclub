@@ -183,7 +183,8 @@ class TournamentUpdate(BaseModel):
 class Tournament(TournamentBase):
     id: int
     is_active: bool
-    registered_count: int = 3
+    registered_count: int
+    registered_players: List[str] = []
 
     class Config:
         orm_mode = True
