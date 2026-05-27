@@ -778,6 +778,22 @@ def confirm_registration(registration_id: int, db: Session = Depends(get_db), cu
     db.refresh(reg)
     return {"status": "ok", "message": "Inscripción confirmada y venta registrada"}
 
+@app.delete("/api/tournaments/registrations/{registration_id}", tags=["Tournaments"])
+def delete_registration(registration_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    reg = db.query(models.TournamentRegistration).filter(models.TournamentRegistration.id == registration_id).first()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Inscripción no encontrada")
+    
+    # Eliminar venta asociada si existía
+    sale = db.query(models.Sale).filter(models.Sale.origin_ref == f"I-{reg.id}").first()
+    if sale:
+        db.query(models.SaleItem).filter(models.SaleItem.sale_id == sale.id).delete()
+        db.delete(sale)
+        
+    db.delete(reg)
+    db.commit()
+    return {"status": "ok", "message": "Inscripción eliminada y venta asociada cancelada"}
+
 # --- SALES & POS ---
 from sqlalchemy import desc, asc, func
 from typing import Optional
