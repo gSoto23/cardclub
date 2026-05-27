@@ -384,7 +384,7 @@ export default function InventoryAdmin() {
 
                 <div className="space-y-1">
                   <label className="text-xs text-white/60 font-bold uppercase">Stock</label>
-                  <input type="number" required min="1" value={Number.isNaN(formData.stock) ? "" : formData.stock} onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                  <input type="number" required min="0" value={Number.isNaN(formData.stock) ? "" : formData.stock} onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
                 </div>
 
                 <div className="space-y-1 flex items-center gap-2 pt-6">
