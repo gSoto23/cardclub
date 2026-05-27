@@ -9,7 +9,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Tarjeta");
+  const [paymentMethod, setPaymentMethod] = useState("SINPE");
   const [whatsappNumber, setWhatsappNumber] = useState("+50688111178");
   const [sinpeNumber, setSinpeNumber] = useState("88111178");
 
@@ -210,7 +210,7 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-bold text-white mb-6 uppercase tracking-widest border-b border-white/10 pb-4">Método de Pago</h2>
 
               <div className="space-y-3 mb-8">
-                {["Tarjeta", "SINPE", "Efectivo"].map((method) => (
+                {["SINPE", "Efectivo"].map((method) => (
                   <label key={method} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${paymentMethod === method ? 'bg-brand-yellow/10 border-brand-yellow text-brand-yellow' : 'bg-black/40 border-white/10 text-white/60 hover:bg-white/5'}`}>
                     <input
                       type="radio"

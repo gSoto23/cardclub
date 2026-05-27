@@ -11,6 +11,7 @@ interface Product {
   stock: number;
   condition: string;
   is_foil: boolean;
+  expansion_set?: string;
 }
 
 interface SaleItem {
@@ -224,7 +225,7 @@ export default function SalesAdmin() {
       sale_type: "POS",
       buyer_email: buyerEmail.trim() || undefined,
       items: cart.map(item => ({
-        description: item.product.name,
+        description: item.product.expansion_set ? `${item.product.name} (${item.product.expansion_set})` : item.product.name,
         price: item.product.price,
         quantity: item.quantity,
         reference_type: "Producto",
@@ -269,7 +270,13 @@ export default function SalesAdmin() {
     : discountValue;
   const finalTotal = Math.max(0, cartTotal - discountAmount);
 
-  const filteredProducts = products.filter(p => p.stock > 0 && p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProducts = products.filter(p => 
+    p.stock > 0 && 
+    (
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.expansion_set && p.expansion_set.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+  );
 
   return (
     <div className="min-h-screen bg-brand-blue pb-12">
@@ -345,7 +352,12 @@ export default function SalesAdmin() {
                           className="border-b border-white/5 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,222,0,0.1)] transition-all cursor-pointer group"
                           onClick={() => addToCart(p)}
                         >
-                          <td className="p-4 text-white font-bold max-w-[200px] truncate" title={p.name}>{p.name}</td>
+                          <td className="p-4 text-white font-bold max-w-[200px]" title={p.name}>
+                            <div className="truncate">{p.name}</div>
+                            {p.expansion_set && (
+                              <span className="text-[10px] text-white/40 block font-normal mt-0.5 truncate uppercase tracking-wider">{p.expansion_set}</span>
+                            )}
+                          </td>
                           <td className="p-4 text-center">
                             <div className="flex justify-center gap-1 text-[9px] uppercase">
                               {p.is_foil && <span className="text-yellow-500 font-bold bg-yellow-500/10 px-1 rounded">Foil</span>}
@@ -412,8 +424,11 @@ export default function SalesAdmin() {
                 <div className="flex-grow space-y-3 mb-6 overflow-y-auto pr-2">
                   {cart.map(item => (
                     <div key={item.product.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/10">
-                      <div className="flex flex-col">
-                        <span className="text-white text-sm font-bold truncate max-w-[180px]">{item.product.name}</span>
+                      <div className="flex flex-col min-w-0 flex-1 pr-2">
+                        <span className="text-white text-sm font-bold truncate" title={item.product.name}>{item.product.name}</span>
+                        {item.product.expansion_set && (
+                          <span className="text-[10px] text-white/40 truncate uppercase tracking-wider mt-0.5">{item.product.expansion_set}</span>
+                        )}
                         <span className="text-white/40 text-xs mt-1">{item.quantity} x {formatCRC(item.product.price)}</span>
                       </div>
                       <div className="flex items-center gap-4">

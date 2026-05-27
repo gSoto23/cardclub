@@ -14,6 +14,7 @@ export default function ConfigAdmin() {
   const [configs, setConfigs] = useState<SiteConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -47,6 +48,37 @@ export default function ConfigAdmin() {
         return [...prev, { key, value, description: "" }];
       }
     });
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const token = localStorage.getItem("auth_token");
+    const toastId = toast.loading('Subiendo banner...');
+    setUploadingBanner(true);
+
+    const imgData = new FormData();
+    imgData.append("file", file);
+
+    try {
+      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: imgData
+      });
+      if (uploadRes.ok) {
+        const uploadJson = await uploadRes.json();
+        handleInputChange('page_membership_banner', uploadJson.image_url);
+        toast.success('Banner subido correctamente', { id: toastId });
+      } else {
+        toast.error('Error al subir el banner', { id: toastId });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error de conexión al subir', { id: toastId });
+    } finally {
+      setUploadingBanner(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,11 +182,35 @@ export default function ConfigAdmin() {
               <div className="bg-white/5 border border-white/10 rounded-xl p-6">
                 <h2 className="text-xl font-bold text-brand-yellow mb-2">Membresía (Membership)</h2>
                 <p className="text-white/40 text-xs mb-4">Puedes usar HTML básico como &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;br/&gt;</p>
-                <textarea 
-                  value={getValue('page_membership')} 
-                  onChange={(e) => handleInputChange('page_membership', e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded p-3 text-white focus:border-brand-yellow focus:outline-none transition-colors h-48 font-mono text-sm"
-                />
+                
+                <div className="mb-6 space-y-2">
+                  <label className="text-xs text-white/60 font-bold uppercase text-brand-yellow">Banner de Membresía</label>
+                  {getValue('page_membership_banner') && (
+                    <div className="relative w-full max-w-sm aspect-[16/9] mb-3 rounded-lg overflow-hidden border border-white/10">
+                      <img 
+                        src={getValue('page_membership_banner')} 
+                        alt="Vista previa del banner" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    disabled={uploadingBanner}
+                    onChange={handleBannerUpload}
+                    className="w-full bg-black/40 border border-white/10 rounded p-1.5 text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-brand-yellow file:text-brand-blue hover:file:bg-yellow-300 cursor-pointer disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Contenido de la Página</label>
+                  <textarea 
+                    value={getValue('page_membership')} 
+                    onChange={(e) => handleInputChange('page_membership', e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded p-3 text-white focus:border-brand-yellow focus:outline-none transition-colors h-48 font-mono text-sm"
+                  />
+                </div>
               </div>
 
               <div className="bg-white/5 border border-white/10 rounded-xl p-6">
