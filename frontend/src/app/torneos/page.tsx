@@ -27,6 +27,11 @@ export default function TorneosPage() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Road to Brasil state
+  const [brasilBanner, setBrasilBanner] = useState("/road_to_brasil.png");
+  const [brasilContent, setBrasilContent] = useState("<p>Información del torneo y su premio de un viaje a Brasil próximamente.</p>");
+  const [showBrasilModal, setShowBrasilModal] = useState(false);
+
   // Dropdowns state
   const [openDropdowns, setOpenDropdowns] = useState<{[key: number]: boolean}>({});
 
@@ -51,7 +56,23 @@ export default function TorneosPage() {
       setIsLoggedIn(true);
     }
     fetchTournaments();
+    fetchBrasilConfig();
   }, []);
+
+  const fetchBrasilConfig = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/config`);
+      if (res.ok) {
+        const data = await res.json();
+        const banner = data.find((c: any) => c.key === "page_brasil_banner")?.value;
+        const content = data.find((c: any) => c.key === "page_brasil_content")?.value;
+        if (banner) setBrasilBanner(banner);
+        if (content) setBrasilContent(content);
+      }
+    } catch (e) {
+      console.error("Error loading Brasil config", e);
+    }
+  };
 
   const fetchTournaments = async () => {
     try {
@@ -123,13 +144,28 @@ export default function TorneosPage() {
   return (
     <div className="container mx-auto px-4 md:px-6 py-12 min-h-[70vh]">
       {/* Cabecera */}
-      <div className="mb-8 border-b border-white/10 pb-8 text-center md:text-left">
-        <h1 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter mb-4 drop-shadow-[0_0_15px_rgba(255,222,0,0.2)]">
-          <span className="text-brand-yellow">Calendario</span>
-        </h1>
-        <p className="text-white/60 text-lg max-w-2xl mb-8">
-          Participá en nuestros eventos oficiales, torneos competitivos y clases para aprender a jugar. Además, mantenete al tanto de todas nuestras actividades.
-        </p>
+      <div className="mb-8 border-b border-white/10 pb-8 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+          <div className="flex-grow">
+            <h1 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter mb-4 drop-shadow-[0_0_15px_rgba(255,222,0,0.2)]">
+              <span className="text-brand-yellow">Calendario</span>
+            </h1>
+            <p className="text-white/60 text-lg max-w-xl">
+              Participá en nuestros eventos oficiales, torneos competitivos y clases para aprender a jugar. Además, mantenete al tanto de todas nuestras actividades.
+            </p>
+          </div>
+          <div className="shrink-0 flex items-center justify-center">
+            <button
+              onClick={() => setShowBrasilModal(true)}
+              className="relative px-8 py-4 bg-brand-blue border-3 border-brand-yellow text-brand-yellow font-black italic tracking-tighter uppercase text-xl md:text-2xl rounded-lg shadow-[0_0_20px_rgba(255,222,0,0.25)] hover:shadow-[0_0_35px_rgba(255,222,0,0.45)] hover:bg-brand-yellow hover:text-brand-blue transform -skew-x-12 transition-all duration-300 group cursor-pointer"
+            >
+              <span className="block transform skew-x-12 group-hover:scale-105 transition-transform duration-300">
+                ROAD TO BRASIL
+              </span>
+            </button>
+          </div>
+        </div>
+
         {/* Filtro por Mes */}
         {tournaments.length > 0 && (
           <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
@@ -310,6 +346,39 @@ export default function TorneosPage() {
               <Button variant="primary" className="flex-1 shadow-[0_0_15px_rgba(255,222,0,0.3)]" onClick={handleRegister} disabled={isRegistering}>
                 {isRegistering ? "Procesando..." : "Confirmar Inscripción"}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Road to Brasil */}
+      {showBrasilModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-300">
+          <div className="bg-brand-blue border border-brand-yellow/30 rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-[0_0_50px_rgba(255,222,0,0.15)] relative my-8 animate-in zoom-in-95 duration-200">
+            <button 
+              type="button" 
+              onClick={() => setShowBrasilModal(false)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white text-2xl font-bold bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer"
+            >
+              &times;
+            </button>
+            
+            <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter mb-6 pb-2 border-b border-white/10">
+              Road to <span className="text-brand-yellow">Brasil</span>
+            </h2>
+
+            <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-6">
+              {brasilBanner && (
+                <img 
+                  src={brasilBanner} 
+                  alt="Road to Brasil" 
+                  className="w-full h-auto rounded-xl shadow-[0_0_30px_rgba(255,222,0,0.15)] border border-brand-yellow/20"
+                />
+              )}
+              <div 
+                className="text-white/80 prose prose-invert prose-brand max-w-none"
+                dangerouslySetInnerHTML={{ __html: brasilContent }}
+              />
             </div>
           </div>
         </div>

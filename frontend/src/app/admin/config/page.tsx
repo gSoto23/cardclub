@@ -81,6 +81,37 @@ export default function ConfigAdmin() {
     }
   };
 
+  const handleBrasilUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const token = localStorage.getItem("auth_token");
+    const toastId = toast.loading('Subiendo banner de Brasil...');
+    setUploadingBanner(true);
+
+    const imgData = new FormData();
+    imgData.append("file", file);
+
+    try {
+      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: imgData
+      });
+      if (uploadRes.ok) {
+        const uploadJson = await uploadRes.json();
+        handleInputChange('page_brasil_banner', uploadJson.image_url);
+        toast.success('Banner de Brasil subido correctamente', { id: toastId });
+      } else {
+        toast.error('Error al subir el banner de Brasil', { id: toastId });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error de conexión al subir', { id: toastId });
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -208,6 +239,40 @@ export default function ConfigAdmin() {
                   <textarea 
                     value={getValue('page_membership')} 
                     onChange={(e) => handleInputChange('page_membership', e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded p-3 text-white focus:border-brand-yellow focus:outline-none transition-colors h-48 font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                <h2 className="text-xl font-bold text-brand-yellow mb-2">Road to Brasil (Torneo Especial)</h2>
+                <p className="text-white/40 text-xs mb-4">Información sobre el torneo y su premio (viaje a Brasil LAIC Pokemon).</p>
+                
+                <div className="mb-6 space-y-2">
+                  <label className="text-xs text-white/60 font-bold uppercase text-brand-yellow">Banner del Evento</label>
+                  {getValue('page_brasil_banner') && (
+                    <div className="relative w-full max-w-sm aspect-[16/9] mb-3 rounded-lg overflow-hidden border border-white/10">
+                      <img 
+                        src={getValue('page_brasil_banner')} 
+                        alt="Vista previa del banner Brasil" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    disabled={uploadingBanner}
+                    onChange={handleBrasilUpload}
+                    className="w-full bg-black/40 border border-white/10 rounded p-1.5 text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-brand-yellow file:text-brand-blue hover:file:bg-yellow-300 cursor-pointer disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-white/60 font-bold uppercase">Contenido de la Sección</label>
+                  <textarea 
+                    value={getValue('page_brasil_content')} 
+                    onChange={(e) => handleInputChange('page_brasil_content', e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded p-3 text-white focus:border-brand-yellow focus:outline-none transition-colors h-48 font-mono text-sm"
                   />
                 </div>
