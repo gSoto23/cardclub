@@ -122,7 +122,10 @@ class Tournament(Base):
         if not self.registrations:
             return []
         return [
-            (reg.user.nickname or reg.user.full_name or reg.user.email.split('@')[0])
+            {
+                "name": (reg.user.nickname or reg.user.full_name or reg.user.email.split('@')[0]),
+                "is_confirmed": reg.status == "Confirmado"
+            }
             for reg in self.registrations if reg.user
         ]
 

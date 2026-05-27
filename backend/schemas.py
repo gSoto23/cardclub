@@ -180,11 +180,20 @@ class TournamentUpdate(BaseModel):
     is_virtual: Optional[bool] = None
     championship_id: Optional[int] = None
 
+class TournamentPlayerInfo(BaseModel):
+    name: str
+    is_confirmed: bool
+
+    class Config:
+        orm_mode = True
+
+
+
 class Tournament(TournamentBase):
     id: int
     is_active: bool
     registered_count: int
-    registered_players: List[str] = []
+    registered_players: List[TournamentPlayerInfo] = []
 
     class Config:
         orm_mode = True

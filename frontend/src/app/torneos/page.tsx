@@ -4,6 +4,11 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "react-hot-toast";
 
+interface TournamentPlayer {
+  name: string;
+  is_confirmed: boolean;
+}
+
 interface Tournament {
   id: number;
   name: string;
@@ -14,7 +19,7 @@ interface Tournament {
   is_active: boolean;
   is_virtual: boolean;
   registered_count: number;
-  registered_players: string[];
+  registered_players: TournamentPlayer[];
 }
 
 export default function TorneosPage() {
@@ -222,9 +227,9 @@ export default function TorneosPage() {
                       <div className="mt-2 bg-black/40 border border-white/5 rounded-lg p-3 max-h-[150px] overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
                         {t.registered_players && t.registered_players.length > 0 ? (
                           t.registered_players.map((player, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-xs text-white/80 font-medium py-1 px-2 hover:bg-white/5 rounded transition-colors">
-                              <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow"></span>
-                              <span>{player}</span>
+                            <div key={idx} className={`flex items-center gap-2 text-xs font-medium py-1 px-2 hover:bg-white/5 rounded transition-colors ${player.is_confirmed ? "text-white" : "text-white/40"}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${player.is_confirmed ? "bg-brand-yellow shadow-[0_0_6px_rgba(255,222,0,0.6)]" : "bg-white/20"}`}></span>
+                              <span>{player.name}</span>
                             </div>
                           ))
                         ) : (
