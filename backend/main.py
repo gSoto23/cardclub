@@ -135,7 +135,7 @@ async def check_finished_auctions_loop():
                         await email_sender.send_auction_won_email(
                             to_email=winner.email,
                             user_name=winner.nickname or winner.full_name or "Ganador",
-                            product_name=auction.product.name,
+                            product_name=auction.product.name if auction.product else "Producto Eliminado",
                             winning_price=highest_bid.amount
                         )
                 auction.winner_notified = True
@@ -158,7 +158,7 @@ async def check_finished_auctions_loop():
                         await email_sender.send_auction_warning_email(
                             to_email=bidder.email,
                             user_name=bidder.nickname or bidder.full_name or "Jugador",
-                            product_name=auction.product.name,
+                            product_name=auction.product.name if auction.product else "Producto Eliminado",
                             current_price=current_price
                         )
                 auction.warning_1h_notified = True
@@ -409,11 +409,11 @@ def get_active_auctions(db: Session = Depends(get_db)):
         result.append({
             "id": auction.id,
             "product_id": auction.product_id,
-            "product_name": auction.product.name,
-            "image_url": auction.product.image_url,
-            "condition": auction.product.condition,
-            "is_foil": auction.product.is_foil,
-            "category_name": auction.product.category.name if auction.product.category else None,
+            "product_name": auction.product.name if auction.product else "Producto Eliminado",
+            "image_url": auction.product.image_url if auction.product else None,
+            "condition": auction.product.condition if auction.product else "N/A",
+            "is_foil": auction.product.is_foil if auction.product else False,
+            "category_name": auction.product.category.name if (auction.product and auction.product.category) else None,
             "start_price": auction.start_price,
             "current_price": auction.current_price,
             "end_time": auction.end_time,
@@ -435,11 +435,11 @@ def get_finished_auctions(db: Session = Depends(get_db)):
             
         result.append({
             "id": auction.id,
-            "product_name": auction.product.name,
-            "image_url": auction.product.image_url,
-            "condition": auction.product.condition,
-            "is_foil": auction.product.is_foil,
-            "category_name": auction.product.category.name if auction.product.category else None,
+            "product_name": auction.product.name if auction.product else "Producto Eliminado",
+            "image_url": auction.product.image_url if auction.product else None,
+            "condition": auction.product.condition if auction.product else "N/A",
+            "is_foil": auction.product.is_foil if auction.product else False,
+            "category_name": auction.product.category.name if (auction.product and auction.product.category) else None,
             "final_price": auction.current_price,
             "end_time": auction.end_time,
             "winner": winner
@@ -678,8 +678,8 @@ def get_my_active_bids(db: Session = Depends(get_db), current_user: models.User 
             
             auction_dict[auction.id] = {
                 "auction_id": auction.id,
-                "product_name": auction.product.name,
-                "image_url": auction.product.image_url,
+                "product_name": auction.product.name if auction.product else "Producto Eliminado",
+                "image_url": auction.product.image_url if auction.product else None,
                 "current_price": auction.current_price,
                 "end_time": auction.end_time,
                 "is_winning": is_winning
@@ -705,8 +705,8 @@ def get_my_won_auctions(db: Session = Depends(get_db), current_user: models.User
             if highest_bid.user_id == current_user.id:
                 won_auctions[auction.id] = {
                     "auction_id": auction.id,
-                    "product_name": auction.product.name,
-                    "image_url": auction.product.image_url,
+                    "product_name": auction.product.name if auction.product else "Producto Eliminado",
+                    "image_url": auction.product.image_url if auction.product else None,
                     "final_price": auction.current_price,
                     "end_time": auction.end_time
                 }

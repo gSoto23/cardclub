@@ -5,15 +5,15 @@ import { Button } from "./Button";
 
 interface Auction {
   id: number;
-  product_id: number;
+  product_id: number | null;
   product_name: string;
-  image_url: string;
+  image_url: string | null;
   start_price: number;
   current_price: number;
   end_time: string;
   condition?: string;
   is_foil?: boolean;
-  category_name?: string;
+  category_name?: string | null;
 }
 
 export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction }) => {

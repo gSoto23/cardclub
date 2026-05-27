@@ -16,7 +16,7 @@ interface Product {
 
 interface Auction {
   id: number;
-  product_id: number;
+  product_id: number | null;
   start_price: number;
   current_price: number;
   start_time: string;
@@ -138,7 +138,7 @@ export default function AuctionsAdmin() {
     };
 
     setFormData({
-      product_id: auction.product_id,
+      product_id: auction.product_id || (products.length > 0 ? products[0].id : 1),
       start_price: auction.start_price,
       start_time: formatDateTimeLocal(auction.start_time),
       end_time: formatDateTimeLocal(auction.end_time)
@@ -174,7 +174,8 @@ export default function AuctionsAdmin() {
     return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);
   };
 
-  const getProductName = (id: number) => {
+  const getProductName = (id: number | null) => {
+    if (id === null) return "Producto Eliminado";
     const prod = products.find(p => p.id === id);
     return prod ? prod.name : `Producto #${id}`;
   };

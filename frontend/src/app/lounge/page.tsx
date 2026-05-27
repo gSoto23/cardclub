@@ -17,7 +17,7 @@ interface Registration {
 interface ActiveBid {
   auction_id: number;
   product_name: string;
-  image_url: string;
+  image_url: string | null;
   current_price: number;
   end_time: string;
   is_winning: boolean;
@@ -26,7 +26,7 @@ interface ActiveBid {
 interface WonAuction {
   auction_id: number;
   product_name: string;
-  image_url: string;
+  image_url: string | null;
   final_price: number;
   end_time: string;
 }

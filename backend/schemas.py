@@ -98,13 +98,13 @@ class Product(ProductBase):
 
 # --- AUCTION ---
 class AuctionBase(BaseModel):
-    product_id: int
+    product_id: Optional[int] = None
     start_price: Optional[float] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
 
 class AuctionCreate(AuctionBase):
-    pass
+    product_id: int
 
 class AuctionUpdate(BaseModel):
     product_id: Optional[int] = None
