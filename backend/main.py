@@ -986,6 +986,26 @@ def confirm_sale(sale_id: int, db: Session = Depends(get_db), current_admin: mod
     db.commit()
     return {"status": "ok", "message": "Venta confirmada"}
 
+@app.delete("/api/sales/{sale_id}", tags=["Sales"])
+def cancel_sale(sale_id: int, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    sale = db.query(models.Sale).filter(models.Sale.id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    
+    if sale.status == "Completado":
+        raise HTTPException(status_code=400, detail="No se puede cancelar una venta completada")
+        
+    for item in sale.items:
+        if item.reference_type == "Producto" and item.reference_id:
+            product = db.query(models.Product).filter(models.Product.id == item.reference_id).first()
+            if product:
+                product.stock += item.quantity
+                
+    db.query(models.SaleItem).filter(models.SaleItem.sale_id == sale_id).delete()
+    db.delete(sale)
+    db.commit()
+    return {"status": "ok", "message": "Venta cancelada exitosamente y stock restaurado"}
+
 def parse_date_param(date_str: Optional[str], is_end: bool = False) -> Optional[datetime]:
     if not date_str:
         return None

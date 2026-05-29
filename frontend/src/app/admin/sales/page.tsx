@@ -172,6 +172,38 @@ export default function SalesAdmin() {
     }
   };
 
+  const cancelApproval = async (id: number, type: "sale" | "registration") => {
+    const message = type === "sale" 
+      ? "¿Estás seguro de cancelar este pedido? Se restablecerá el stock de los productos." 
+      : "¿Estás seguro de cancelar esta inscripción?";
+      
+    if (!window.confirm(message)) {
+      return;
+    }
+    
+    try {
+      const endpoint = type === "sale" 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/sales/${id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/tournaments/registrations/${id}`;
+      
+      const res = await fetch(endpoint, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` }
+      });
+
+      if (res.ok) {
+        toast.success(type === "sale" ? "Pedido cancelado y stock restablecido" : "Inscripción cancelada");
+        fetchApprovals(); // Refresh approvals
+        fetchSales(); // Refresh history
+        fetchProducts(); // Refresh catalog products (stock updated)
+      } else {
+        toast.error("Error al cancelar");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleQuantityChange = (productId: number, qty: number) => {
     setAddQuantities({ ...addQuantities, [productId]: qty });
   };
@@ -763,9 +795,19 @@ export default function SalesAdmin() {
                         </div>
                         <div className="flex justify-between items-center mt-4">
                           <p className="text-brand-yellow font-black text-xl">{formatCRC(sale.total_amount)}</p>
-                          <Button variant="primary" size="sm" onClick={() => confirmApproval(sale.id, "sale")}>
-                            Confirmar Pago
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              onClick={() => cancelApproval(sale.id, "sale")}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button variant="primary" size="sm" onClick={() => confirmApproval(sale.id, "sale")}>
+                              Confirmar Pago
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -811,9 +853,19 @@ export default function SalesAdmin() {
                         </div>
                         <div className="flex justify-between items-center mt-4">
                           <p className="text-brand-yellow font-black text-xl">{formatCRC(reg.total_amount)}</p>
-                          <Button variant="primary" size="sm" onClick={() => confirmApproval(reg.id, "registration")}>
-                            Confirmar Pago
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              onClick={() => cancelApproval(reg.id, "registration")}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button variant="primary" size="sm" onClick={() => confirmApproval(reg.id, "registration")}>
+                              Confirmar Pago
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
