@@ -103,12 +103,12 @@ export default function SalesAdmin() {
       let statsUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/sales/stats?`;
       
       if (startDate) {
-        url += `&start_date=${new Date(startDate).toISOString()}`;
-        statsUrl += `start_date=${new Date(startDate).toISOString()}&`;
+        url += `&start_date=${startDate}`;
+        statsUrl += `start_date=${startDate}&`;
       }
       if (endDate) {
-        url += `&end_date=${new Date(endDate).toISOString()}`;
-        statsUrl += `end_date=${new Date(endDate).toISOString()}&`;
+        url += `&end_date=${endDate}`;
+        statsUrl += `end_date=${endDate}&`;
       }
       if (searchId) {
         url += `&search_id=${searchId}`;

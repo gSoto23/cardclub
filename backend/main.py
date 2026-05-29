@@ -986,6 +986,32 @@ def confirm_sale(sale_id: int, db: Session = Depends(get_db), current_admin: mod
     db.commit()
     return {"status": "ok", "message": "Venta confirmada"}
 
+def parse_date_param(date_str: Optional[str], is_end: bool = False) -> Optional[datetime]:
+    if not date_str:
+        return None
+    cleaned = date_str.strip()
+    if cleaned.endswith('Z'):
+        cleaned = cleaned[:-1]
+    
+    try:
+        if len(cleaned) == 10:
+            if is_end:
+                return datetime.fromisoformat(f"{cleaned}T23:59:59.999999")
+            else:
+                return datetime.fromisoformat(f"{cleaned}T00:00:00")
+                
+        dt = datetime.fromisoformat(cleaned)
+        if dt.tzinfo is not None:
+            dt = dt.replace(tzinfo=None)
+            
+        if is_end and dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
+            dt = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            
+        return dt
+    except Exception as e:
+        print(f"Error parsing date {date_str}: {e}")
+        return None
+
 @app.get("/api/sales", response_model=List[schemas.Sale], tags=["Sales"])
 def get_sales(
     skip: int = 0, 
@@ -1002,10 +1028,14 @@ def get_sales(
 
     if search_id:
         query = query.filter(models.Sale.id == search_id)
-    if start_date:
-        query = query.filter(models.Sale.sale_date >= datetime.fromisoformat(start_date))
-    if end_date:
-        query = query.filter(models.Sale.sale_date <= datetime.fromisoformat(end_date))
+        
+    parsed_start = parse_date_param(start_date, is_end=False)
+    parsed_end = parse_date_param(end_date, is_end=True)
+    
+    if parsed_start:
+        query = query.filter(models.Sale.sale_date >= parsed_start)
+    if parsed_end:
+        query = query.filter(models.Sale.sale_date <= parsed_end)
         
     if order == "desc":
         query = query.order_by(desc(getattr(models.Sale, sort_by)))
@@ -1026,10 +1056,14 @@ def get_sales_stats(
 
     if search_id:
         query = query.filter(models.Sale.id == search_id)
-    if start_date:
-        query = query.filter(models.Sale.sale_date >= datetime.fromisoformat(start_date))
-    if end_date:
-        query = query.filter(models.Sale.sale_date <= datetime.fromisoformat(end_date))
+        
+    parsed_start = parse_date_param(start_date, is_end=False)
+    parsed_end = parse_date_param(end_date, is_end=True)
+    
+    if parsed_start:
+        query = query.filter(models.Sale.sale_date >= parsed_start)
+    if parsed_end:
+        query = query.filter(models.Sale.sale_date <= parsed_end)
         
     sales = query.all()
     

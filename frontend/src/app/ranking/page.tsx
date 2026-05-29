@@ -69,22 +69,76 @@ export default function RankingPage() {
     fetchRanking(id);
   };
 
-  const getTrophyColor = (index: number) => {
-    if (index === 0) return "text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]"; // Oro
-    if (index === 1) return "text-slate-300 drop-shadow-[0_0_10px_rgba(203,213,225,0.8)]"; // Plata
-    if (index === 2) return "text-amber-600 drop-shadow-[0_0_10px_rgba(217,119,6,0.8)]"; // Bronce
-    return "text-white/20";
+  const getRanksList = (users: RankingUser[]) => {
+    const list: number[] = [];
+    let currentRank = 1;
+    for (let i = 0; i < users.length; i++) {
+      if (i > 0 && users[i].total_points < users[i - 1].total_points) {
+        currentRank = i + 1;
+      }
+      list.push(currentRank);
+    }
+    return list;
   };
 
-  const renderAvatar = (user: RankingUser, size: "sm" | "lg" = "sm", rankIndex?: number) => {
+  const getRankEmoji = (rank: number) => {
+    if (rank === 1) return "👑";
+    if (rank === 2) return "🥈";
+    if (rank === 3) return "🥉";
+    return "";
+  };
+
+  const getPositionLabel = (rank: number) => {
+    if (rank === 1) return "1er Lugar";
+    if (rank === 2) return "2do Lugar";
+    if (rank === 3) return "3er Lugar";
+    return `#${rank}`;
+  };
+
+  const getCardStyle = (rank: number) => {
+    if (rank === 1) {
+      return {
+        card: "relative w-56 bg-gradient-to-b from-yellow-600/30 via-black to-black border-2 border-yellow-500 rounded-2xl p-6 text-center shadow-[0_10px_50px_rgba(255,222,0,0.3)] flex flex-col items-center pt-14 overflow-visible",
+        title: "text-white font-black truncate w-full mt-2 text-2xl tracking-wide relative z-10",
+        subtitle: "text-yellow-400 font-bold text-sm mb-4 relative z-10",
+        pointsBg: "bg-yellow-950/80 w-full rounded-lg py-3 border border-yellow-600 relative z-10",
+        pointsText: "text-yellow-400 font-black text-3xl",
+        pointsLabel: "text-white/60 text-[10px] uppercase font-bold tracking-widest",
+        emojiClass: "text-6xl mb-4 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.8)] z-10"
+      };
+    }
+    if (rank === 2) {
+      return {
+        card: "relative w-48 bg-gradient-to-b from-slate-700 to-slate-900 border border-slate-500 rounded-2xl p-6 text-center shadow-[0_10px_30px_rgba(203,213,225,0.15)] flex flex-col items-center pt-12 overflow-visible",
+        title: "text-white font-black truncate w-full mt-2 text-lg tracking-wide",
+        subtitle: "text-slate-300 font-bold text-sm mb-4",
+        pointsBg: "bg-slate-800/80 w-full rounded-lg py-2 border border-slate-600",
+        pointsText: "text-brand-yellow font-black text-2xl",
+        pointsLabel: "text-white/40 text-[10px] uppercase font-bold tracking-widest",
+        emojiClass: "text-4xl mb-4 text-slate-300 drop-shadow-[0_0_15px_rgba(203,213,225,0.6)] z-10"
+      };
+    }
+    // Rank 3 or fallback
+    return {
+      card: "relative w-48 bg-gradient-to-b from-amber-800/80 to-amber-950 border border-amber-700/50 rounded-2xl p-6 text-center shadow-[0_10px_30px_rgba(217,119,6,0.15)] flex flex-col items-center pt-10 overflow-visible",
+      title: "text-white font-black truncate w-full mt-2 text-lg tracking-wide",
+      subtitle: "text-amber-500 font-bold text-sm mb-4",
+      pointsBg: "bg-black/40 w-full rounded-lg py-2 border border-amber-900",
+      pointsText: "text-brand-yellow font-black text-2xl",
+      pointsLabel: "text-white/40 text-[10px] uppercase font-bold tracking-widest",
+      emojiClass: "text-3xl mb-4 text-amber-600 drop-shadow-[0_0_15px_rgba(217,119,6,0.6)] z-10"
+    };
+  };
+
+  const renderAvatar = (user: RankingUser, size: "sm" | "lg" = "sm", rank?: number) => {
     const isLg = size === "lg";
     
     let borderClass = "border-white/20";
     let glowClass = "shadow-lg";
-    if (isLg && rankIndex !== undefined) {
-      if (rankIndex === 0) { borderClass = "border-yellow-400"; glowClass = "shadow-[0_0_30px_rgba(250,204,21,0.6)]"; }
-      if (rankIndex === 1) { borderClass = "border-slate-300"; glowClass = "shadow-[0_0_20px_rgba(203,213,225,0.4)]"; }
-      if (rankIndex === 2) { borderClass = "border-amber-600"; glowClass = "shadow-[0_0_20px_rgba(217,119,6,0.4)]"; }
+    if (isLg && rank !== undefined) {
+      if (rank === 1) { borderClass = "border-yellow-400"; glowClass = "shadow-[0_0_30px_rgba(250,204,21,0.6)]"; }
+      if (rank === 2) { borderClass = "border-slate-300"; glowClass = "shadow-[0_0_20px_rgba(203,213,225,0.4)]"; }
+      if (rank === 3) { borderClass = "border-amber-600"; glowClass = "shadow-[0_0_20px_rgba(217,119,6,0.4)]"; }
     }
 
     const sizeClasses = isLg ? "w-24 h-24 md:w-32 md:h-32 text-3xl md:text-5xl" : "w-10 h-10 text-sm";
@@ -110,6 +164,7 @@ export default function RankingPage() {
   if (loading && championships.length === 0) return <div className="min-h-[70vh] flex items-center justify-center text-white">Cargando leaderboard...</div>;
 
   const currentChampName = championships.find(c => c.id === selectedChamp)?.name || "Global";
+  const ranksList = getRanksList(ranking);
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-12 min-h-[70vh]">
@@ -153,60 +208,74 @@ export default function RankingPage() {
           {/* Top 3 Podium (Cards Style) */}
           <div className="flex flex-col md:flex-row justify-center items-center md:items-end gap-20 md:gap-8 mb-16 px-4 mt-16">
             
-            {/* 2nd Place */}
-            {ranking.length > 1 && (
-              <div className="order-2 md:order-1 flex flex-col items-center animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 transform hover:-translate-y-2 transition-transform">
-                <span className="text-4xl mb-4 text-slate-300 drop-shadow-[0_0_15px_rgba(203,213,225,0.6)] z-10">🥈</span>
-                <div className="relative w-48 bg-gradient-to-b from-slate-700 to-slate-900 border border-slate-500 rounded-2xl p-6 text-center shadow-[0_10px_30px_rgba(203,213,225,0.15)] flex flex-col items-center pt-12 overflow-visible">
-                  <div className="absolute -top-16 md:-top-20">
-                    {renderAvatar(ranking[1], "lg", 1)}
-                  </div>
-                  <p className="text-white font-black truncate w-full mt-2 text-lg tracking-wide">{ranking[1].nickname || ranking[1].email.split('@')[0]}</p>
-                  <p className="text-slate-300 font-bold text-sm mb-4">2do Lugar</p>
-                  <div className="bg-slate-800/80 w-full rounded-lg py-2 border border-slate-600">
-                    <p className="text-brand-yellow font-black text-2xl">{ranking[1].total_points}</p>
-                    <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Puntos</p>
+            {/* 2nd Place Card (Index 1) */}
+            {ranking.length > 1 && (() => {
+              const rank = ranksList[1];
+              const styles = getCardStyle(rank);
+              return (
+                <div className="order-2 md:order-1 flex flex-col items-center animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 transform hover:-translate-y-2 transition-transform">
+                  <span className={styles.emojiClass}>{getRankEmoji(rank)}</span>
+                  <div className={styles.card}>
+                    <div className="absolute -top-16 md:-top-20">
+                      {renderAvatar(ranking[1], "lg", rank)}
+                    </div>
+                    <p className={styles.title}>{ranking[1].nickname || ranking[1].email.split('@')[0]}</p>
+                    <p className={styles.subtitle}>{getPositionLabel(rank)}</p>
+                    <div className={styles.pointsBg}>
+                      <p className={styles.pointsText}>{ranking[1].total_points}</p>
+                      <p className={styles.pointsLabel}>Puntos</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             
-            {/* 1st Place */}
-            {ranking.length > 0 && (
-              <div className="order-1 md:order-2 flex flex-col items-center animate-in fade-in slide-in-from-bottom-12 duration-700 z-20 transform hover:-translate-y-2 transition-transform">
-                <span className="text-6xl mb-4 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.8)] z-10">👑</span>
-                <div className="relative w-56 bg-gradient-to-b from-yellow-600/30 via-black to-black border-2 border-yellow-500 rounded-2xl p-6 text-center shadow-[0_10px_50px_rgba(255,222,0,0.3)] flex flex-col items-center pt-14 overflow-visible">
-                  <div className="absolute inset-0 rounded-2xl bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 mix-blend-overlay"></div>
-                  <div className="absolute -top-16 md:-top-20">
-                    {renderAvatar(ranking[0], "lg", 0)}
-                  </div>
-                  <p className="text-white font-black truncate w-full mt-2 text-2xl tracking-wide relative z-10">{ranking[0].nickname || ranking[0].email.split('@')[0]}</p>
-                  <p className="text-yellow-400 font-bold text-sm mb-4 relative z-10">1er Lugar</p>
-                  <div className="bg-yellow-950/80 w-full rounded-lg py-3 border border-yellow-600 relative z-10">
-                    <p className="text-yellow-400 font-black text-3xl">{ranking[0].total_points}</p>
-                    <p className="text-white/60 text-[10px] uppercase font-bold tracking-widest">Puntos</p>
+            {/* 1st Place Card (Index 0) */}
+            {ranking.length > 0 && (() => {
+              const rank = ranksList[0];
+              const styles = getCardStyle(rank);
+              return (
+                <div className="order-1 md:order-2 flex flex-col items-center animate-in fade-in slide-in-from-bottom-12 duration-700 z-20 transform hover:-translate-y-2 transition-transform">
+                  <span className={styles.emojiClass}>{getRankEmoji(rank)}</span>
+                  <div className={styles.card}>
+                    {rank === 1 && (
+                      <div className="absolute inset-0 rounded-2xl bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 mix-blend-overlay"></div>
+                    )}
+                    <div className="absolute -top-16 md:-top-20">
+                      {renderAvatar(ranking[0], "lg", rank)}
+                    </div>
+                    <p className={styles.title}>{ranking[0].nickname || ranking[0].email.split('@')[0]}</p>
+                    <p className={styles.subtitle}>{getPositionLabel(rank)}</p>
+                    <div className={styles.pointsBg}>
+                      <p className={styles.pointsText}>{ranking[0].total_points}</p>
+                      <p className={styles.pointsLabel}>Puntos</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
-            {/* 3rd Place */}
-            {ranking.length > 2 && (
-              <div className="order-3 md:order-3 flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 transform hover:-translate-y-2 transition-transform">
-                <span className="text-3xl mb-4 text-amber-600 drop-shadow-[0_0_15px_rgba(217,119,6,0.6)] z-10">🥉</span>
-                <div className="relative w-48 bg-gradient-to-b from-amber-800/80 to-amber-950 border border-amber-700/50 rounded-2xl p-6 text-center shadow-[0_10px_30px_rgba(217,119,6,0.15)] flex flex-col items-center pt-10 overflow-visible">
-                  <div className="absolute -top-16 md:-top-20">
-                    {renderAvatar(ranking[2], "lg", 2)}
-                  </div>
-                  <p className="text-white font-black truncate w-full mt-2 text-lg tracking-wide">{ranking[2].nickname || ranking[2].email.split('@')[0]}</p>
-                  <p className="text-amber-500 font-bold text-sm mb-4">3er Lugar</p>
-                  <div className="bg-black/40 w-full rounded-lg py-2 border border-amber-900">
-                    <p className="text-brand-yellow font-black text-2xl">{ranking[2].total_points}</p>
-                    <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Puntos</p>
+            {/* 3rd Place Card (Index 2) */}
+            {ranking.length > 2 && (() => {
+              const rank = ranksList[2];
+              const styles = getCardStyle(rank);
+              return (
+                <div className="order-3 md:order-3 flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 transform hover:-translate-y-2 transition-transform">
+                  <span className={styles.emojiClass}>{getRankEmoji(rank)}</span>
+                  <div className={styles.card}>
+                    <div className="absolute -top-16 md:-top-20">
+                      {renderAvatar(ranking[2], "lg", rank)}
+                    </div>
+                    <p className={styles.title}>{ranking[2].nickname || ranking[2].email.split('@')[0]}</p>
+                    <p className={styles.subtitle}>{getPositionLabel(rank)}</p>
+                    <div className={styles.pointsBg}>
+                      <p className={styles.pointsText}>{ranking[2].total_points}</p>
+                      <p className={styles.pointsLabel}>Puntos</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Leaderboard Table */}
@@ -231,7 +300,7 @@ export default function RankingPage() {
                         >
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span className="font-black text-lg text-white/40">
-                              #{actualPos + 1}
+                              #{ranksList[actualPos]}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
