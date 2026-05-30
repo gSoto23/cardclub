@@ -468,8 +468,8 @@ export default function InventoryAdmin() {
         </div>
 
         {/* Tabla de Productos */}
-        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-          <table className="w-full text-left text-white">
+        <div className="bg-white/5 border border-white/10 rounded-xl overflow-x-auto">
+          <table className="w-full text-left text-white min-w-[900px]">
             <thead className="bg-black/40 text-xs uppercase tracking-widest text-white/60 border-b border-white/10">
               <tr>
                 <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("id")}>

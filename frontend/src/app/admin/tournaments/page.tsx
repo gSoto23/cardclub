@@ -486,7 +486,7 @@ export default function TournamentsAdmin() {
 
         {/* Right Column: Registrations & Results */}
         {selectedTournamentId && (
-          <div className="w-full md:w-1/3 bg-black/20 border border-white/10 rounded-xl p-6 self-start sticky top-6">
+          <div className="w-full xl:w-1/3 bg-black/20 border border-white/10 rounded-xl p-6 self-start sticky top-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-brand-yellow">Gestión</h2>
               <div className="flex bg-black/40 rounded-lg p-1 border border-white/5">
@@ -634,8 +634,8 @@ export default function TournamentsAdmin() {
             </div>
           )}
 
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-            <table className="w-full text-left">
+          <div className="bg-white/5 border border-white/10 rounded-xl overflow-x-auto">
+            <table className="w-full text-left min-w-[600px]">
               <thead className="bg-black/60">
                 <tr className="text-white/60 text-xs uppercase tracking-widest border-b border-white/10">
                   <th className="p-4 font-bold">ID</th>

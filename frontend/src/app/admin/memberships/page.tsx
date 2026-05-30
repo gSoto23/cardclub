@@ -315,7 +315,7 @@ export default function AdminMemberships() {
 
               {/* Members Table */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-white">
+                <table className="w-full text-left text-white min-w-[700px]">
                   <thead className="bg-black/40 text-xs uppercase tracking-widest text-white/60 border-b border-white/10">
                     <tr>
                       <th className="p-4">Usuario</th>

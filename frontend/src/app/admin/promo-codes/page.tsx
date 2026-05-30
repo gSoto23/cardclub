@@ -279,7 +279,7 @@ export default function PromoCodesAdmin() {
               Códigos Activos
             </h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-left min-w-[650px]">
                 <thead>
                   <tr className="text-white/40 text-xs uppercase tracking-widest border-b border-white/10">
                     <th className="pb-4 font-normal">Código</th>

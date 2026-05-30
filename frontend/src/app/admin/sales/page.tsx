@@ -354,20 +354,20 @@ export default function SalesAdmin() {
           <div className="flex flex-col xl:flex-row gap-8">
             {/* Izquierda: Catálogo en Tabla */}
             <div className="xl:w-2/3 flex flex-col gap-6">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
                 <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Catálogo</h2>
                 <input 
                   type="text" 
                   placeholder="🔍 Buscar producto..." 
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-64"
+                  className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-full sm:w-64"
                 />
               </div>
               
               <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                <div className="max-h-[600px] overflow-y-auto">
-                  <table className="w-full text-left">
+                <div className="max-h-[600px] overflow-auto">
+                  <table className="w-full text-left min-w-[650px]">
                     <thead className="bg-black/60 sticky top-0 z-10 backdrop-blur-md">
                       <tr className="text-white/60 text-[10px] uppercase tracking-widest">
                         <th className="p-4 font-bold">Producto</th>
@@ -653,7 +653,7 @@ export default function SalesAdmin() {
 
               {/* Tabla */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full text-left min-w-[900px]">
                   <thead>
                     <tr className="text-white/40 text-xs uppercase tracking-widest border-b border-white/10">
                       <th className="pb-4 font-normal">ID</th>
@@ -768,10 +768,10 @@ export default function SalesAdmin() {
                   <div className="space-y-4">
                     {approvalsSales.map(sale => (
                       <div key={sale.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-white font-bold">{sale.user_email}</p>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="text-white font-bold truncate max-w-[180px] xs:max-w-[240px] sm:max-w-none" title={sale.user_email}>{sale.user_email}</p>
                               {sale.user_whatsapp && (
                                 <a 
                                   href={`https://wa.me/${sale.user_whatsapp.replace(/\D/g, '')}`} 
@@ -789,22 +789,27 @@ export default function SalesAdmin() {
                               <span className="font-mono font-bold text-brand-yellow">#V-{sale.id}</span> - {new Date(sale.date).toLocaleString('es-CR')}
                             </p>
                           </div>
-                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.payment_method === 'SINPE' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 ${sale.payment_method === 'SINPE' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
                             {sale.payment_method}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center mt-4">
+                        <div className="border-t border-white/5 pt-3 mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                           <p className="text-brand-yellow font-black text-xl">{formatCRC(sale.total_amount)}</p>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs py-1 px-3"
                               onClick={() => cancelApproval(sale.id, "sale")}
                             >
                               Cancelar
                             </Button>
-                            <Button variant="primary" size="sm" onClick={() => confirmApproval(sale.id, "sale")}>
+                            <Button 
+                              variant="primary" 
+                              size="sm" 
+                              className="text-xs py-1.5 px-3 whitespace-nowrap"
+                              onClick={() => confirmApproval(sale.id, "sale")}
+                            >
                               Confirmar Pago
                             </Button>
                           </div>
@@ -826,10 +831,10 @@ export default function SalesAdmin() {
                   <div className="space-y-4">
                     {approvalsRegs.map(reg => (
                       <div key={reg.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-white font-bold">{reg.user_email}</p>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="text-white font-bold truncate max-w-[180px] xs:max-w-[240px] sm:max-w-none" title={reg.user_email}>{reg.user_email}</p>
                               {reg.user_whatsapp && (
                                 <a 
                                   href={`https://wa.me/${reg.user_whatsapp.replace(/\D/g, '')}`} 
@@ -847,22 +852,27 @@ export default function SalesAdmin() {
                               <span className="font-mono font-bold text-brand-yellow">#I-{reg.id}</span> - {reg.type}
                             </p>
                           </div>
-                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${reg.payment_method === 'SINPE' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 ${reg.payment_method === 'SINPE' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
                             {reg.payment_method}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center mt-4">
+                        <div className="border-t border-white/5 pt-3 mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                           <p className="text-brand-yellow font-black text-xl">{formatCRC(reg.total_amount)}</p>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs py-1 px-3"
                               onClick={() => cancelApproval(reg.id, "registration")}
                             >
                               Cancelar
                             </Button>
-                            <Button variant="primary" size="sm" onClick={() => confirmApproval(reg.id, "registration")}>
+                            <Button 
+                              variant="primary" 
+                              size="sm" 
+                              className="text-xs py-1.5 px-3 whitespace-nowrap"
+                              onClick={() => confirmApproval(reg.id, "registration")}
+                            >
                               Confirmar Pago
                             </Button>
                           </div>

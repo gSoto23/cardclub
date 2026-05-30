@@ -159,9 +159,9 @@ export default function ConfigAdmin() {
 
       <div className="container mx-auto px-6 py-8">
         <form onSubmit={handleSubmit}>
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-8">
             <h1 className="text-3xl font-black text-white">Configuración del Sistema</h1>
-            <Button variant="primary" type="submit" disabled={saving}>
+            <Button variant="primary" type="submit" disabled={saving} className="whitespace-nowrap">
               {saving ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </div>
