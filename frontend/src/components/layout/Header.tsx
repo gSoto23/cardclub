@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { Button } from "../ui/Button";
 
@@ -13,19 +14,38 @@ export const Header = () => {
 
   const { cartItems, cartCount, cartTotal, removeFromCart, updateQuantity } = useCart();
 
+  const pathname = usePathname();
+
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (token) {
-      setIsLoggedIn(true);
       try {
         const payloadBase64 = token.split('.')[1];
         const decodedPayload = JSON.parse(atob(payloadBase64));
+        
+        // Verificar expiración (exp está en segundos, Date.now() en ms)
+        const exp = decodedPayload.exp;
+        const now = Math.floor(Date.now() / 1000);
+        if (exp && exp < now) {
+          localStorage.removeItem("auth_token");
+          setIsLoggedIn(false);
+          setUserRole(null);
+          window.location.href = "/login";
+          return;
+        }
+
+        setIsLoggedIn(true);
         setUserRole(decodedPayload.role);
       } catch (e) {
         console.error("Error decoding token in Header", e);
+        localStorage.removeItem("auth_token");
+        setIsLoggedIn(false);
       }
+    } else {
+      setIsLoggedIn(false);
+      setUserRole(null);
     }
-  }, []);
+  }, [pathname]);
 
   const formatCRC = (amount: number) => {
     return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);

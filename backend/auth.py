@@ -11,7 +11,7 @@ import models
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 SECRET_KEY = "super_secreto_para_desarrollo_card_club" # TODO: Cambiar por env var en producción
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 1 semana
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 horas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
