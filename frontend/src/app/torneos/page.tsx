@@ -78,7 +78,24 @@ export default function TorneosPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tournaments`);
       if (res.ok) {
-        setTournaments(await res.json());
+        const data = await res.json();
+        const now = new Date();
+        data.sort((a: any, b: any) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          const isPastA = dateA < now;
+          const isPastB = dateB < now;
+          
+          if (isPastA === isPastB) {
+             if (isPastA) {
+                 return dateB.getTime() - dateA.getTime();
+             } else {
+                 return dateA.getTime() - dateB.getTime();
+             }
+          }
+          return isPastA ? 1 : -1;
+        });
+        setTournaments(data);
       }
     } catch (err) {
       console.error(err);

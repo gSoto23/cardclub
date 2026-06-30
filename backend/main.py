@@ -176,7 +176,8 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3001",
-    # Agregar dominios de producción aquí después
+    "https://cardclubcr.com",
+    "https://www.cardclubcr.com",
 ]
 
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
@@ -321,7 +322,7 @@ def get_my_ranking(db: Session = Depends(get_db), current_user: models.User = De
 
 # --- CATEGORIES ---
 @app.get("/api/categories", response_model=List[schemas.Category], tags=["Categories"])
-def read_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_categories(skip: int = 0, limit: int = 10000, db: Session = Depends(get_db)):
     categories = db.query(models.Category).offset(skip).limit(limit).all()
     return categories
 
@@ -335,7 +336,7 @@ def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_
 
 # --- PRODUCTS ---
 @app.get("/api/products", response_model=List[schemas.Product], tags=["Products"])
-def read_products(skip: int = 0, limit: int = 100, visibility: Optional[str] = None, db: Session = Depends(get_db)):
+def read_products(skip: int = 0, limit: int = 10000, visibility: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(models.Product)
     if visibility == "store":
         query = query.filter(models.Product.is_auction_only == False, models.Product.is_pos_only == False)
@@ -386,7 +387,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db), current_admin
 
 # --- AUCTIONS ---
 @app.get("/api/auctions", response_model=List[schemas.Auction], tags=["Auctions"])
-def read_all_auctions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_all_auctions(skip: int = 0, limit: int = 10000, db: Session = Depends(get_db)):
     # Este endpoint retorna el modelo Auction con su ID y todo lo básico, ideal para el admin
     try:
         auctions = db.query(models.Auction).offset(skip).limit(limit).all()
