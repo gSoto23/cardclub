@@ -947,6 +947,16 @@ def get_pending_approvals(search_id: Optional[int] = None, db: Session = Depends
     sales_result = []
     for sale in pending_sales:
         user = db.query(models.User).filter(models.User.id == sale.user_id).first()
+        items_result = []
+        for item in sale.items:
+            items_result.append({
+                "id": item.id,
+                "description": item.description,
+                "price": item.price,
+                "quantity": item.quantity,
+                "reference_type": item.reference_type,
+                "reference_id": item.reference_id
+            })
         sales_result.append({
             "id": sale.id,
             "type": "Pedido Online",
@@ -954,7 +964,8 @@ def get_pending_approvals(search_id: Optional[int] = None, db: Session = Depends
             "user_whatsapp": user.whatsapp if user else None,
             "payment_method": sale.payment_method,
             "total_amount": sale.total_amount,
-            "date": sale.sale_date
+            "date": sale.sale_date,
+            "items": items_result
         })
 
     regs_result = []

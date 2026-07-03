@@ -45,6 +45,7 @@ interface ApprovalItem {
   payment_method: string;
   total_amount: number;
   date: string;
+  items?: SaleItem[];
 }
 
 export default function SalesAdmin() {
@@ -793,6 +794,20 @@ export default function SalesAdmin() {
                             {sale.payment_method}
                           </span>
                         </div>
+                        {/* List of items in the sale */}
+                        {sale.items && sale.items.length > 0 && (
+                          <div className="mt-3 space-y-1.5 bg-black/25 rounded-lg p-3 border border-white/5">
+                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-black mb-1">Productos:</p>
+                            {sale.items.map(item => (
+                              <div key={item.id} className="text-xs text-white/80 flex justify-between gap-4">
+                                <span className="truncate" title={item.description}>
+                                  {item.quantity}x {item.description}
+                                </span>
+                                <span className="font-mono text-white/40 shrink-0">{formatCRC(item.price * item.quantity)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <div className="border-t border-white/5 pt-3 mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                           <p className="text-brand-yellow font-black text-xl">{formatCRC(sale.total_amount)}</p>
                           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
