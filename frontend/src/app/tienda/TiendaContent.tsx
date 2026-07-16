@@ -55,7 +55,7 @@ export const TiendaContent = ({ products }: TiendaContentProps) => {
 
   // Filter products
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    const filtered = products.filter((product) => {
       // 1. Text Search (Matches title, description, or set)
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
@@ -77,6 +77,16 @@ export const TiendaContent = ({ products }: TiendaContentProps) => {
         return false;
       }
       return true;
+    });
+
+    // Ordenar: Productos con stock > 0 primero, agotados al final
+    return filtered.sort((a, b) => {
+      const stockA = a.stock || 0;
+      const stockB = b.stock || 0;
+      
+      if (stockA > 0 && stockB <= 0) return -1;
+      if (stockA <= 0 && stockB > 0) return 1;
+      return 0;
     });
   }, [products, searchTerm, selectedGame, selectedCategory, selectedSet]);
 
