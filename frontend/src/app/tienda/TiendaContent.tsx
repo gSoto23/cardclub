@@ -27,6 +27,11 @@ export const TiendaContent = ({ products }: TiendaContentProps) => {
   const [selectedGame, setSelectedGame] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSet, setSelectedSet] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const toggleCategoryView = (category: string) => {
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  };
 
   // Get unique filter values from the complete products list
   const games = useMemo(() => {
@@ -235,38 +240,42 @@ export const TiendaContent = ({ products }: TiendaContentProps) => {
                   {category}
                 </h2>
                 <div className="flex gap-2">
-                  <div className="hidden md:flex items-center gap-1 text-white/40">
-                    <span className="text-xs font-bold uppercase tracking-widest mr-2">
-                      Desliza
+                  <button
+                    onClick={() => toggleCategoryView(category)}
+                    className="flex items-center gap-1 text-white/40 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <span className="text-xs font-bold uppercase tracking-widest mr-1">
+                      {expandedCategories[category] ? "Contraer" : "Ver Todos"}
                     </span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </div>
+                    {expandedCategories[category] ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Horizontal Scroll Layout with Snap */}
-              <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-                {groupedProducts[category].map((product: any) => (
-                  <div
-                    key={product.id}
-                    className="snap-start shrink-0 w-[280px] md:w-[320px]"
-                  >
-                    <ProductCard product={product} />
-                  </div>
-                ))}
-              </div>
+              {expandedCategories[category] ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pb-8">
+                  {groupedProducts[category].map((product: any) => (
+                    <div key={product.id} className="w-full">
+                      <ProductCard product={product} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+                  {groupedProducts[category].map((product: any) => (
+                    <div
+                      key={product.id}
+                      className="snap-start shrink-0 w-[280px] md:w-[320px]"
+                    >
+                      <ProductCard product={product} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           ))}
         </div>
