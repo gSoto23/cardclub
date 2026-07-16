@@ -22,6 +22,7 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
   const [isFlashing, setIsFlashing] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [selectedIncrement, setSelectedIncrement] = useState<number>(500);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -63,11 +64,17 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
         return;
       }
 
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      let timeString = "";
+      if (days > 0) {
+        timeString = `${days}d `;
+      }
+      timeString += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      setTimeLeft(timeString);
     };
 
     updateCountdown();
@@ -132,7 +139,8 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
           <img
             src={initialAuction.image_url}
             alt={initialAuction.product_name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
+            onClick={() => setIsModalOpen(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-white/20 text-xl font-black uppercase">NO IMAGE</div>
@@ -200,6 +208,28 @@ export const ActiveAuctionCard = ({ initialAuction }: { initialAuction: Auction 
           {timeLeft === "Finalizado" ? "Subasta Finalizada" : `Confirmar Puja +${formatCRC(selectedIncrement)}`}
         </Button>
       </div>
+
+      {/* Modal para ver la imagen en grande */}
+      {isModalOpen && initialAuction.image_url && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" 
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="absolute -top-12 right-0 text-white/60 hover:text-white font-bold text-sm tracking-widest uppercase flex items-center gap-2 p-2 transition-colors"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cerrar &times;
+            </button>
+            <img 
+              src={initialAuction.image_url} 
+              alt={initialAuction.product_name} 
+              className="max-w-full max-h-[85vh] object-contain rounded shadow-2xl border border-white/10" 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

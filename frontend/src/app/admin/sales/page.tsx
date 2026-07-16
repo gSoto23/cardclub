@@ -205,6 +205,30 @@ export default function SalesAdmin() {
     }
   };
 
+  const voidSale = async (id: number) => {
+    if (!window.confirm("¿Estás seguro de anular esta venta? Se restablecerá el stock y dejará de contar en la contabilidad.")) {
+      return;
+    }
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` }
+      });
+      if (res.ok) {
+        toast.success("Venta anulada exitosamente");
+        fetchSales();
+        fetchProducts();
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || "Error al anular venta");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error de conexión");
+    }
+  };
+
+
   const handleQuantityChange = (productId: number, qty: number) => {
     setAddQuantities({ ...addQuantities, [productId]: qty });
   };
@@ -666,6 +690,7 @@ export default function SalesAdmin() {
                       <th className="pb-4 font-normal">Estado</th>
                       <th className="pb-4 font-normal">Pago</th>
                       <th className="pb-4 font-normal text-right">Total</th>
+                      <th className="pb-4 font-normal text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm">
@@ -692,7 +717,7 @@ export default function SalesAdmin() {
                           ))}
                         </td>
                         <td className="py-4">
-                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.status === 'Completado' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.status === 'Completado' ? 'bg-green-500/20 text-green-400' : sale.status === 'Anulado' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'}`}>
                             {sale.status}
                           </span>
                         </td>
@@ -711,6 +736,18 @@ export default function SalesAdmin() {
                             </div>
                           ) : (
                             formatCRC(sale.total_amount)
+                          )}
+                        </td>
+                        <td className="py-4 text-right">
+                          {sale.status === 'Completado' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[10px] py-1 px-2 uppercase tracking-widest"
+                              onClick={() => voidSale(sale.id)}
+                            >
+                              Anular
+                            </Button>
                           )}
                         </td>
                       </tr>

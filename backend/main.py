@@ -1004,8 +1004,8 @@ def cancel_sale(sale_id: int, db: Session = Depends(get_db), current_admin: mode
     if not sale:
         raise HTTPException(status_code=404, detail="Venta no encontrada")
     
-    if sale.status == "Completado":
-        raise HTTPException(status_code=400, detail="No se puede cancelar una venta completada")
+    if sale.status == "Anulado":
+        raise HTTPException(status_code=400, detail="La venta ya está anulada")
         
     for item in sale.items:
         if item.reference_type == "Producto" and item.reference_id:
@@ -1013,10 +1013,9 @@ def cancel_sale(sale_id: int, db: Session = Depends(get_db), current_admin: mode
             if product:
                 product.stock += item.quantity
                 
-    db.query(models.SaleItem).filter(models.SaleItem.sale_id == sale_id).delete()
-    db.delete(sale)
+    sale.status = "Anulado"
     db.commit()
-    return {"status": "ok", "message": "Venta cancelada exitosamente y stock restaurado"}
+    return {"status": "ok", "message": "Venta anulada exitosamente y stock restaurado"}
 
 def parse_date_param(date_str: Optional[str], is_end: bool = False) -> Optional[datetime]:
     if not date_str:
