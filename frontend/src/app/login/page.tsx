@@ -89,6 +89,11 @@ export default function LoginPage() {
               required
             />
           </div>
+          <div className="flex justify-end -mt-2">
+            <a href="/forgot-password" className="text-white/60 hover:text-brand-yellow text-xs font-semibold transition-colors">
+              ¿Olvidaste tu contraseña?
+            </a>
+          </div>
           <Button variant="primary" className="w-full py-4 text-lg" type="submit">
             Ingresar
           </Button>

@@ -41,6 +41,13 @@ class User(UserBase):
     class Config:
         orm_mode = True
 
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
 # --- CATEGORY ---
 class CategoryBase(BaseModel):
     name: str

@@ -296,3 +296,16 @@ async def send_new_tournament_email(to_email: str, user_name: str, tournament_na
     </div>
     """
     await asyncio.to_thread(send_email, to_email, f"¡Inscripciones Abiertas: {tournament_name}!", content)
+
+async def send_password_reset_email(to_email: str, user_name: str, reset_link: str):
+    content = f"""
+    <div class="title">Restablecer Contraseña 🔒</div>
+    <p>Hola {user_name},</p>
+    <p>Has solicitado restablecer tu contraseña en Card Club. Haz clic en el siguiente botón para crear una nueva:</p>
+    <div style="text-align: center;">
+        <a href="{reset_link}" class="button">RESTABLECER CONTRASEÑA</a>
+    </div>
+    <p style="margin-top: 20px;">Este enlace expirará en 30 minutos.</p>
+    <p>Si no solicitaste este cambio, puedes ignorar este correo sin problemas.</p>
+    """
+    await asyncio.to_thread(send_email, to_email, "Restablecer tu contraseña - Card Club", content)

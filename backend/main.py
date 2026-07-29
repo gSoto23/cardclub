@@ -269,6 +269,36 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+@app.post("/api/forgot-password", tags=["Auth"])
+async def forgot_password(req: schemas.PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == req.email).first()
+    if user:
+        token = auth.create_reset_token(user.email)
+        base_url = email_sender.API_BASE_URL.rstrip('/')
+        reset_link = f"{base_url}/reset-password?token={token}"
+        background_tasks.add_task(
+            email_sender.send_password_reset_email,
+            to_email=user.email,
+            user_name=user.nickname or user.full_name or "Usuario",
+            reset_link=reset_link
+        )
+    return {"status": "ok", "message": "Si el correo existe, se enviará un enlace de recuperación."}
+
+@app.post("/api/reset-password", tags=["Auth"])
+async def reset_password(req: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+    email = auth.verify_reset_token(req.token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Token inválido o expirado")
+        
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    user.hashed_password = auth.get_password_hash(req.new_password)
+    db.commit()
+    
+    return {"status": "ok", "message": "Contraseña actualizada exitosamente"}
+
 @app.get("/api/users/me", response_model=schemas.User, tags=["Users"])
 def get_current_user_profile(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
