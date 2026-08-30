@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "react-hot-toast";
+import { compressImage } from "@/utils/imageCompression";
 
 interface Product {
   id: number;
@@ -160,10 +161,13 @@ export default function InventoryAdmin() {
     let uploadedImageUrl = formData.image_url;
 
     if (imageFile) {
-      const toastId = toast.loading('Subiendo imagen...');
-      const imgData = new FormData();
-      imgData.append("file", imageFile);
+      const toastId = toast.loading('Optimizando y subiendo imagen...');
+      
       try {
+        const compressedFile = await compressImage(imageFile);
+        const imgData = new FormData();
+        imgData.append("file", compressedFile);
+        
         const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },

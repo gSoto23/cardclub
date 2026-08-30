@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "react-hot-toast";
+import { compressImage } from "@/utils/imageCompression";
 
 interface SiteConfig {
   key: string;
@@ -54,13 +55,14 @@ export default function ConfigAdmin() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     const token = localStorage.getItem("auth_token");
-    const toastId = toast.loading('Subiendo banner...');
+    const toastId = toast.loading('Optimizando y subiendo banner...');
     setUploadingBanner(true);
 
-    const imgData = new FormData();
-    imgData.append("file", file);
-
     try {
+      const compressedFile = await compressImage(file, 1920, 1080, 0.85); // Banners can be wider
+      const imgData = new FormData();
+      imgData.append("file", compressedFile);
+
       const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
@@ -85,13 +87,14 @@ export default function ConfigAdmin() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     const token = localStorage.getItem("auth_token");
-    const toastId = toast.loading('Subiendo banner de Brasil...');
+    const toastId = toast.loading('Optimizando y subiendo banner de Brasil...');
     setUploadingBanner(true);
 
-    const imgData = new FormData();
-    imgData.append("file", file);
-
     try {
+      const compressedFile = await compressImage(file, 1920, 1080, 0.85);
+      const imgData = new FormData();
+      imgData.append("file", compressedFile);
+
       const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
