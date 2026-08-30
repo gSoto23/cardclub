@@ -49,3 +49,5 @@ scratch*.py
 *.scratch.*
 debug.txt
 .eslintcache
+seed*.py
+fix*.py
