@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, UploadFile, File, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import models, schemas, auth
@@ -12,6 +12,9 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta, datetime, timezone
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 CR_TZ = timezone(timedelta(hours=-6))
 
@@ -97,11 +100,14 @@ except Exception as e:
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="Card Club Backend API",
     description="Backend para el ecosistema digital Card Club",
     version="1.0.0"
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 active_tasks = set()
 
@@ -130,46 +136,70 @@ async def check_finished_auctions_loop():
         try:
             db = SessionLocal()
             now = datetime.now(CR_TZ).replace(tzinfo=None)
-            closed_auctions = db.query(models.Auction).filter(
-                models.Auction.end_time <= now,
-                models.Auction.winner_notified == False
-            ).all()
-            for auction in closed_auctions:
-                if auction.bids:
-                    highest_bid = max(auction.bids, key=lambda b: b.amount)
-                    winner = highest_bid.user
-                    if winner:
-                        await email_sender.send_auction_won_email(
-                            to_email=winner.email,
-                            user_name=winner.nickname or winner.full_name or "Ganador",
-                            product_name=auction.product.name if auction.product else "Producto Eliminado",
-                            winning_price=highest_bid.amount
-                        )
-                auction.winner_notified = True
-                db.commit()
-
-            # Warning 1 hora
-            warning_time = now + timedelta(hours=1)
-            warning_auctions = db.query(models.Auction).filter(
-                models.Auction.end_time <= warning_time,
-                models.Auction.end_time > now,
-                models.Auction.warning_1h_notified == False,
-                models.Auction.is_active == True
-            ).all()
             
-            for auction in warning_auctions:
-                if auction.bids:
-                    unique_bidders = {bid.user for bid in auction.bids if bid.user}
-                    current_price = max((b.amount for b in auction.bids), default=auction.start_price)
-                    for bidder in unique_bidders:
-                        await email_sender.send_auction_warning_email(
-                            to_email=bidder.email,
-                            user_name=bidder.nickname or bidder.full_name or "Jugador",
-                            product_name=auction.product.name if auction.product else "Producto Eliminado",
-                            current_price=current_price
-                        )
-                auction.warning_1h_notified = True
+            # Ensure lock row exists
+            lock_exists = db.query(models.SystemLock).filter_by(name="auction_worker").first()
+            if not lock_exists:
+                db.add(models.SystemLock(name="auction_worker", locked_until=now - timedelta(days=1)))
+                try:
+                    db.commit()
+                except:
+                    db.rollback()
+                    
+            # Try to acquire lock
+            timeout = now + timedelta(minutes=1)
+            updated_count = db.query(models.SystemLock).filter(
+                models.SystemLock.name == "auction_worker",
+                (models.SystemLock.locked_until == None) | (models.SystemLock.locked_until <= now)
+            ).update({"locked_until": timeout}, synchronize_session=False)
+            
+            if updated_count > 0:
                 db.commit()
+                try:
+                    closed_auctions = db.query(models.Auction).filter(
+                        models.Auction.end_time <= now,
+                        models.Auction.winner_notified == False
+                    ).all()
+                    for auction in closed_auctions:
+                        if auction.bids:
+                            highest_bid = max(auction.bids, key=lambda b: b.amount)
+                            winner = highest_bid.user
+                            if winner:
+                                await email_sender.send_auction_won_email(
+                                    to_email=winner.email,
+                                    user_name=winner.nickname or winner.full_name or "Ganador",
+                                    product_name=auction.product.name if auction.product else "Producto Eliminado",
+                                    winning_price=highest_bid.amount
+                                )
+                        auction.winner_notified = True
+                        db.commit()
+
+                    # Warning 1 hora
+                    warning_time = now + timedelta(hours=1)
+                    warning_auctions = db.query(models.Auction).filter(
+                        models.Auction.end_time <= warning_time,
+                        models.Auction.end_time > now,
+                        models.Auction.warning_1h_notified == False,
+                        models.Auction.is_active == True
+                    ).all()
+                    
+                    for auction in warning_auctions:
+                        if auction.bids:
+                            unique_bidders = {bid.user for bid in auction.bids if bid.user}
+                            current_price = max((b.amount for b in auction.bids), default=auction.start_price)
+                            for bidder in unique_bidders:
+                                await email_sender.send_auction_warning_email(
+                                    to_email=bidder.email,
+                                    user_name=bidder.nickname or bidder.full_name or "Jugador",
+                                    product_name=auction.product.name if auction.product else "Producto Eliminado",
+                                    current_price=current_price
+                                )
+                        auction.warning_1h_notified = True
+                        db.commit()
+                finally:
+                    # Release lock
+                    db.query(models.SystemLock).filter_by(name="auction_worker").update({"locked_until": None}, synchronize_session=False)
+                    db.commit()
 
             db.close()
         except Exception as e:
@@ -219,6 +249,9 @@ async def health_check():
 # --- UPLOADS ---
 @app.post("/api/upload", tags=["Uploads"])
 async def upload_image(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="El archivo debe ser una imagen válida.")
+        
     file_extension = os.path.splitext(file.filename)[1]
     file_name = f"{uuid.uuid4()}{file_extension}"
     file_path = os.path.join(UPLOADS_DIR, file_name)
@@ -232,7 +265,8 @@ async def upload_image(file: UploadFile = File(...), current_user: models.User =
 
 # --- AUTHENTICATION & USERS ---
 @app.post("/api/register", response_model=schemas.User, tags=["Auth"])
-def register_user(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register_user(request: Request, user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Verificar si el correo existe
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -262,7 +296,8 @@ def register_user(user: schemas.UserCreate, background_tasks: BackgroundTasks, d
     return new_user
 
 @app.post("/api/login", response_model=schemas.Token, tags=["Auth"])
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -277,7 +312,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/forgot-password", tags=["Auth"])
-async def forgot_password(req: schemas.PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def forgot_password(request: Request, req: schemas.PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == req.email).first()
     if user:
         token = auth.create_reset_token(user.email)
@@ -292,7 +328,7 @@ async def forgot_password(req: schemas.PasswordResetRequest, background_tasks: B
     return {"status": "ok", "message": "Si el correo existe, se enviará un enlace de recuperación."}
 
 @app.post("/api/reset-password", tags=["Auth"])
-async def reset_password(req: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+def reset_password(req: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
     email = auth.verify_reset_token(req.token)
     if not email:
         raise HTTPException(status_code=400, detail="Token inválido o expirado")
@@ -1322,43 +1358,39 @@ async def auction_endpoint(websocket: WebSocket, auction_id: int, db: Session = 
                 }))
                 continue
             
-            # Buscar la subasta con bloqueo de fila para evitar race conditions
-            auction = db.query(models.Auction).filter(models.Auction.id == auction_id).with_for_update().first()
-            
-            if auction and auction.is_active and new_amount > auction.current_price:
-                previous_bidder_id = None
-                product_name = auction.product.name if auction.product else "Producto en Subasta"
-                
-                # Fetch highest bid explicitly to bypass long-lived session stale relationship cache
-                highest_bid = db.query(models.Bid).filter(models.Bid.auction_id == auction_id).order_by(models.Bid.amount.desc()).first()
-                if highest_bid:
-                    previous_bidder_id = highest_bid.user_id
-                    with open("debug.txt", "a") as f: f.write(f"Highest bid user_id is {previous_bidder_id}, current user_id is {user_id}\n")
-                
-                # Actualizar precio
-                auction.current_price = new_amount
-                
-                # Crear el Bid
-                new_bid = models.Bid(auction_id=auction_id, user_id=user_id, amount=new_amount)
-                db.add(new_bid)
-                db.commit()
-                
-                if previous_bidder_id and previous_bidder_id != user_id:
-                    previous_user = db.query(models.User).filter(models.User.id == previous_bidder_id).first()
-                    if previous_user:
-                        with open("debug.txt", "a") as f: f.write(f"Sending outbid email to {previous_user.email} for {product_name}\n")
-                        print(f"Sending outbid email to {previous_user.email} for {product_name}...")
-                        fire_and_forget(email_sender.send_outbid_email(
-                            to_email=previous_user.email,
-                            user_name=previous_user.nickname or previous_user.full_name or "Coleccionista",
-                            product_name=product_name,
-                            new_price=new_amount,
-                            auction_id=auction_id
-                        ))
-                    else:
-                        with open("debug.txt", "a") as f: f.write(f"Previous user {previous_bidder_id} not found in DB\n")
-                else:
-                    with open("debug.txt", "a") as f: f.write(f"Condition failed: prev={previous_bidder_id}, curr={user_id}\n")
+            from fastapi.concurrency import run_in_threadpool
+
+            def process_bid_sync():
+                auction = db.query(models.Auction).filter(models.Auction.id == auction_id).with_for_update().first()
+                if auction and auction.is_active and new_amount > auction.current_price:
+                    previous_bidder_id = None
+                    product_name = auction.product.name if auction.product else "Producto en Subasta"
+                    
+                    highest_bid = db.query(models.Bid).filter(models.Bid.auction_id == auction_id).order_by(models.Bid.amount.desc()).first()
+                    if highest_bid:
+                        previous_bidder_id = highest_bid.user_id
+                    
+                    auction.current_price = new_amount
+                    new_bid = models.Bid(auction_id=auction_id, user_id=user_id, amount=new_amount)
+                    db.add(new_bid)
+                    db.commit()
+                    
+                    if previous_bidder_id and previous_bidder_id != user_id:
+                        previous_user = db.query(models.User).filter(models.User.id == previous_bidder_id).first()
+                        if previous_user:
+                            fire_and_forget(email_sender.send_outbid_email(
+                                to_email=previous_user.email,
+                                user_name=previous_user.nickname or previous_user.full_name or "Coleccionista",
+                                product_name=product_name,
+                                new_price=new_amount,
+                                auction_id=auction_id
+                            ))
+                    return True
+                return False
+
+            success = await run_in_threadpool(process_bid_sync)
+
+            if success:
                 
                 # Broadcast a todos los conectados
                 await manager.broadcast(json.dumps({

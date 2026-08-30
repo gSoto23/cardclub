@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 
+import os
+
 # --- CONFIGURACIÓN DE SEGURIDAD ---
-SECRET_KEY = "super_secreto_para_desarrollo_card_club" # TODO: Cambiar por env var en producción
+SECRET_KEY = os.getenv("SECRET_KEY", "super_secreto_para_desarrollo_card_club")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 horas
 
@@ -48,7 +50,7 @@ def verify_reset_token(token: str) -> Optional[str]:
         return None
 
 # --- DEPENDENCIAS ---
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudieron validar las credenciales",

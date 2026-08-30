@@ -5,6 +5,12 @@ from database import Base
 
 CR_TZ = timezone(timedelta(hours=-6))
 
+class SystemLock(Base):
+    __tablename__ = "system_locks"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+
 class User(Base):
     __tablename__ = "users"
 

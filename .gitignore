@@ -47,3 +47,5 @@ test*.py
 *test*.ts
 scratch*.py
 *.scratch.*
+debug.txt
+.eslintcache

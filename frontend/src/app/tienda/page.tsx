@@ -4,7 +4,7 @@ import { TiendaContent } from "./TiendaContent";
 // Server Component data fetching
 async function getProducts() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?visibility=store`, { cache: 'no-store' });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products?visibility=store`, { next: { revalidate: 60 } });
     if (!res.ok) {
       throw new Error("Failed to fetch products");
     }
