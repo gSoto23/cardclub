@@ -33,6 +33,7 @@ class Category(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
+    display_order = Column(Integer, default=0)
     
     products = relationship("Product", back_populates="category")
 

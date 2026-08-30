@@ -26,6 +26,13 @@ except Exception as e:
 
 try:
     with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE categories ADD COLUMN display_order INTEGER DEFAULT 0;"))
+        print("display_order column added to categories.")
+except Exception as e:
+    print("display_order migration skipped:", e)
+
+try:
+    with engine.begin() as conn:
         conn.execute(text("ALTER TABLE products ADD COLUMN is_pos_only BOOLEAN DEFAULT FALSE;"))
         print("is_pos_only column added.")
 except Exception as e:
@@ -353,13 +360,27 @@ def get_my_ranking(db: Session = Depends(get_db), current_user: models.User = De
 # --- CATEGORIES ---
 @app.get("/api/categories", response_model=List[schemas.Category], tags=["Categories"])
 def read_categories(skip: int = 0, limit: int = 10000, db: Session = Depends(get_db)):
-    categories = db.query(models.Category).offset(skip).limit(limit).all()
+    categories = db.query(models.Category).order_by(models.Category.display_order.asc(), models.Category.name.asc()).offset(skip).limit(limit).all()
     return categories
 
 @app.post("/api/categories", response_model=schemas.Category, tags=["Categories"])
 def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
-    db_category = models.Category(name=category.name)
+    db_category = models.Category(name=category.name, display_order=category.display_order)
     db.add(db_category)
+    db.commit()
+    db.refresh(db_category)
+    return db_category
+
+@app.put("/api/categories/{category_id}", response_model=schemas.Category, tags=["Categories"])
+def update_category(category_id: int, category_update: schemas.CategoryUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    db_category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    if not db_category:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    
+    update_data = category_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_category, key, value)
+        
     db.commit()
     db.refresh(db_category)
     return db_category

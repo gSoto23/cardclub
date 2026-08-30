@@ -13,7 +13,7 @@ interface Product {
   condition: string;
   is_foil: boolean;
   image_url: string;
-  category?: { name: string };
+  category?: { id?: number; name: string; display_order?: number };
   stock?: number;
   description?: string;
 }
@@ -103,7 +103,15 @@ export const TiendaContent = ({ products }: TiendaContentProps) => {
   }, [filteredProducts]);
 
   const activeCategories = useMemo(() => {
-    return Object.keys(groupedProducts).sort();
+    return Object.keys(groupedProducts).sort((a, b) => {
+      const orderA = groupedProducts[a][0]?.category?.display_order || 0;
+      const orderB = groupedProducts[b][0]?.category?.display_order || 0;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return a.localeCompare(b);
+    });
   }, [groupedProducts]);
 
   // Reset all filters

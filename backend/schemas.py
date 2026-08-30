@@ -51,9 +51,14 @@ class PasswordResetConfirm(BaseModel):
 # --- CATEGORY ---
 class CategoryBase(BaseModel):
     name: str
+    display_order: Optional[int] = 0
 
 class CategoryCreate(CategoryBase):
     pass
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    display_order: Optional[int] = None
 
 class Category(CategoryBase):
     id: int

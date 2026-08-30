@@ -88,18 +88,29 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <div>
             <span className="text-white/60 text-xs uppercase tracking-widest block mb-0.5">Precio</span>
             <span className="text-2xl font-black text-brand-yellow">
-              {formatCRC(product.price)}
+              {product.price === 0 ? "Consultar" : formatCRC(product.price)}
             </span>
           </div>
-          <Button 
-            variant="primary" 
-            size="sm" 
-            className="px-4"
-            disabled={isOutOfStock}
-            onClick={() => addToCart(product)}
-          >
-            {isOutOfStock ? 'Agotado' : 'Añadir'}
-          </Button>
+          {product.price === 0 ? (
+            <a
+              href={`https://wa.me/50688111178?text=${encodeURIComponent(`Hola, me interesa la carta *${product.name}* (${product.expansion_set}). Foto: ${product.image_url}. ¿Cuál es el precio?`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center font-bold transition-all duration-300 uppercase tracking-widest bg-brand-yellow text-brand-blue hover:bg-yellow-300 h-9 px-4 text-xs rounded-xl shadow-[0_0_15px_rgba(255,222,0,0.2)] hover:shadow-[0_0_20px_rgba(255,222,0,0.4)]"
+            >
+              Consultar
+            </a>
+          ) : (
+            <Button 
+              variant="primary" 
+              size="sm" 
+              className="px-4"
+              disabled={isOutOfStock}
+              onClick={() => addToCart(product)}
+            >
+              {isOutOfStock ? 'Agotado' : 'Añadir'}
+            </Button>
+          )}
         </div>
       </div>
     </div>
