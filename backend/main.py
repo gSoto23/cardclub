@@ -971,14 +971,35 @@ def get_global_ranking(championship_id: Optional[int] = None, db: Session = Depe
 @app.post("/api/sales", response_model=schemas.Sale, tags=["Sales"])
 def create_sale(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
     # Validar productos comodín (nombre y precio libres definidos por el vendedor)
+    is_expense = sale.sale_type == "Gasto"
+    if is_expense and not sale.items:
+        raise HTTPException(status_code=400, detail="El gasto requiere al menos un ítem")
     for item in sale.items:
+        if is_expense and item.reference_type != "Comodin":
+            raise HTTPException(status_code=400, detail="Un gasto solo puede contener productos comodín")
         if item.reference_type == "Comodin":
             if not item.description or not item.description.strip():
                 raise HTTPException(status_code=400, detail="El producto comodín requiere un nombre")
-            if item.price <= 0 or item.quantity <= 0:
-                raise HTTPException(status_code=400, detail="El producto comodín requiere precio y cantidad mayores a 0")
+            if item.quantity <= 0:
+                raise HTTPException(status_code=400, detail="El producto comodín requiere cantidad mayor a 0")
             if item.unit_cost is not None and item.unit_cost < 0:
                 raise HTTPException(status_code=400, detail="El costo del producto comodín no puede ser negativo")
+            if is_expense:
+                # Gasto: solo costo, sin precio de venta
+                if not item.unit_cost or item.unit_cost <= 0:
+                    raise HTTPException(status_code=400, detail="El gasto requiere un costo mayor a 0")
+                item.price = 0.0
+            elif item.price <= 0:
+                raise HTTPException(status_code=400, detail="El producto comodín requiere precio mayor a 0")
+
+    if is_expense:
+        # Un gasto no genera ingreso ni descuentos ni recibo al cliente
+        sale.total_amount = 0.0
+        sale.discount_amount = 0.0
+        sale.original_total = 0.0
+        sale.promo_code = None
+        sale.buyer_email = None
+        sale.user_id = None
 
     db_sale = models.Sale(
         user_id=sale.user_id,
@@ -988,7 +1009,7 @@ def create_sale(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db:
         status="Completado",
         discount_amount=sale.discount_amount or 0.0,
         promo_code=sale.promo_code,
-        original_total=sale.original_total or sale.total_amount
+        original_total=sale.original_total if is_expense else (sale.original_total or sale.total_amount)
     )
     db.add(db_sale)
     db.commit()
@@ -1165,6 +1186,7 @@ def get_sales(
     sort_by: str = "sale_date", 
     order: str = "desc", 
     search_id: Optional[int] = None,
+    sale_type: Optional[str] = None,
     db: Session = Depends(get_db), 
     current_admin: models.User = Depends(auth.get_current_admin_user)
 ):
@@ -1172,6 +1194,10 @@ def get_sales(
 
     if search_id:
         query = query.filter(models.Sale.id == search_id)
+    if sale_type == "Gasto":
+        query = query.filter(models.Sale.sale_type == "Gasto")
+    elif sale_type == "Ventas":
+        query = query.filter(models.Sale.sale_type != "Gasto")
         
     parsed_start = parse_date_param(start_date, is_end=False)
     parsed_end = parse_date_param(end_date, is_end=True)
@@ -1213,8 +1239,14 @@ def get_sales_stats(
     
     total_ventas = 0.0
     total_costo = 0.0
+    total_gastos = 0.0
+    total_orders = 0
     
     for sale in sales:
+        if sale.sale_type == "Gasto":
+            total_gastos += sum((item.unit_cost or 0) * item.quantity for item in sale.items)
+            continue
+        total_orders += 1
         total_ventas += sale.total_amount
         for item in sale.items:
             if item.reference_type == "Producto" and item.reference_id:
@@ -1224,13 +1256,14 @@ def get_sales_stats(
             elif item.reference_type == "Comodin" and item.unit_cost:
                 total_costo += (item.unit_cost * item.quantity)
                     
-    ganancia = total_ventas - total_costo
+    ganancia = total_ventas - total_costo - total_gastos
     
     return {
         "total_ventas": total_ventas,
         "total_costo": total_costo,
+        "total_gastos": total_gastos,
         "ganancia": ganancia,
-        "total_orders": len(sales)
+        "total_orders": total_orders
     }
 
 @app.post("/api/checkout", response_model=schemas.Sale, tags=["Sales"])

@@ -29,6 +29,7 @@ interface CustomItem {
   name: string;
   price: number;
   cost?: number;
+  isExpense: boolean;
   description?: string;
 }
 
@@ -77,16 +78,19 @@ export default function SalesAdmin() {
   const [customPrice, setCustomPrice] = useState("");
   const [customCost, setCustomCost] = useState("");
   const [customDescription, setCustomDescription] = useState("");
+  // La orden es un gasto cuando solo contiene comodines con costo y sin precio
+  const isExpenseMode = cart.length === 0 && customItems.length > 0 && customItems.every(item => item.isExpense);
 
   // History State
   const [sales, setSales] = useState<Sale[]>([]);
-  const [salesStats, setSalesStats] = useState({ total_ventas: 0, total_costo: 0, ganancia: 0, total_orders: 0 });
+  const [salesStats, setSalesStats] = useState({ total_ventas: 0, total_costo: 0, total_gastos: 0, ganancia: 0, total_orders: 0 });
   const [page, setPage] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [sortBy, setSortBy] = useState("sale_date");
   const [order, setOrder] = useState("desc");
   const [searchId, setSearchId] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"" | "Ventas" | "Gasto">("");
 
   // Approvals State
   const [approvalsSales, setApprovalsSales] = useState<ApprovalItem[]>([]);
@@ -103,7 +107,7 @@ export default function SalesAdmin() {
     fetchProducts();
     fetchSales();
     fetchApprovals();
-  }, [page, startDate, endDate, sortBy, order, searchId]);
+  }, [page, startDate, endDate, sortBy, order, searchId, typeFilter]);
 
   const fetchProducts = async () => {
     try {
@@ -131,6 +135,7 @@ export default function SalesAdmin() {
         url += `&search_id=${searchId}`;
         statsUrl += `search_id=${searchId}&`;
       }
+      if (typeFilter) url += `&sale_type=${typeFilter}`;
 
       const headers = { "Authorization": `Bearer ${localStorage.getItem("auth_token")}` };
       
@@ -253,6 +258,11 @@ export default function SalesAdmin() {
     const qtyToAdd = addQuantities[product.id] || 1;
     if (qtyToAdd <= 0) return;
 
+    if (isExpenseMode) {
+      toast.error("La orden actual es un gasto. Registralo o vacialo antes de agregar productos.");
+      return;
+    }
+
     if (product.stock <= 0) {
       toast.error("No hay stock disponible.");
       return;
@@ -295,20 +305,28 @@ export default function SalesAdmin() {
       toast.error("Ingresá el nombre del producto.");
       return;
     }
-    if (!price || price <= 0) {
-      toast.error("Ingresá un precio mayor a 0.");
-      return;
-    }
     const cost = customCost.trim() === "" ? undefined : parseFloat(customCost);
     if (cost !== undefined && (isNaN(cost) || cost < 0)) {
       toast.error("El costo no puede ser negativo.");
       return;
     }
+    // Sin precio y con costo => se registra como gasto
+    const isExpense = customPrice.trim() === "" && cost !== undefined && cost > 0;
+    if (!isExpense && (!price || price <= 0)) {
+      toast.error("Ingresá un precio mayor a 0, o solo el costo para registrar un gasto.");
+      return;
+    }
+    const hasItems = cart.length > 0 || customItems.length > 0;
+    if (hasItems && isExpense !== isExpenseMode) {
+      toast.error("No se pueden mezclar gastos y ventas en la misma orden.");
+      return;
+    }
     setCustomItems([...customItems, {
       id: `${Date.now()}-${Math.random()}`,
       name,
-      price,
+      price: isExpense ? 0 : price,
       cost,
+      isExpense,
       description: customDescription.trim() || undefined
     }]);
     resetCustomForm();
@@ -320,6 +338,11 @@ export default function SalesAdmin() {
 
   const processCheckout = async () => {
     if (cart.length === 0 && customItems.length === 0) return;
+
+    if (isExpenseMode) {
+      await processExpense();
+      return;
+    }
     
     const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0)
       + customItems.reduce((acc, item) => acc + item.price, 0);
@@ -382,6 +405,44 @@ export default function SalesAdmin() {
     }
   };
 
+  const processExpense = async () => {
+    const payload = {
+      total_amount: 0,
+      payment_method: paymentMethod,
+      sale_type: "Gasto",
+      items: customItems.map(item => ({
+        description: item.name,
+        price: 0,
+        quantity: 1,
+        reference_type: "Comodin",
+        notes: item.description,
+        unit_cost: item.cost
+      }))
+    };
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        toast.success("Gasto registrado exitosamente");
+        setCustomItems([]);
+        resetCustomForm();
+        fetchSales(); // Refresh history
+      } else {
+        toast.error("Error al registrar el gasto");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const formatCRC = (amount: number) => {
     return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', minimumFractionDigits: 0 }).format(amount);
   };
@@ -391,6 +452,8 @@ export default function SalesAdmin() {
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0)
     + customItems.reduce((acc, item) => acc + item.price, 0);
   const isCartEmpty = cart.length === 0 && customItems.length === 0;
+  const expenseTotal = customItems.reduce((acc, item) => acc + (item.isExpense ? (item.cost || 0) : 0), 0);
+  const saleExpenseTotal = (sale: Sale) => sale.items.reduce((acc, item) => acc + (item.unit_cost || 0) * item.quantity, 0);
   const discountAmount = discountType === "percentage" 
     ? Math.round(cartTotal * (discountValue / 100)) 
     : discountValue;
@@ -572,7 +635,7 @@ export default function SalesAdmin() {
                     <input
                       type="number"
                       min="0"
-                      placeholder="Precio (₡) *"
+                      placeholder="Precio (₡) — vacío si es gasto"
                       value={customPrice}
                       onChange={e => setCustomPrice(e.target.value)}
                       className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-full"
@@ -580,7 +643,7 @@ export default function SalesAdmin() {
                     <input
                       type="number"
                       min="0"
-                      placeholder="Costo (₡) (opcional)"
+                      placeholder="Costo (₡) — solo costo = gasto"
                       value={customCost}
                       onChange={e => setCustomCost(e.target.value)}
                       className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-full"
@@ -629,18 +692,26 @@ export default function SalesAdmin() {
                     </div>
                   ))}
                   {customItems.map(item => (
-                    <div key={item.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-brand-yellow/20">
+                    <div key={item.id} className={`flex justify-between items-center bg-white/5 p-3 rounded-lg border ${item.isExpense ? "border-red-500/30" : "border-brand-yellow/20"}`}>
                       <div className="flex flex-col min-w-0 flex-1 pr-2">
                         <span className="text-white text-sm font-bold truncate" title={item.name}>{item.name}</span>
                         {item.description && (
                           <span className="text-[10px] text-white/40 truncate mt-0.5" title={item.description}>{item.description}</span>
                         )}
-                        <span className="text-brand-yellow/60 text-[10px] uppercase tracking-wider mt-1">
-                          Comodín{item.cost !== undefined && <span className="text-white/40 normal-case"> · Costo {formatCRC(item.cost)}</span>}
-                        </span>
+                        {item.isExpense ? (
+                          <span className="text-red-400/70 text-[10px] uppercase tracking-wider mt-1">Gasto</span>
+                        ) : (
+                          <span className="text-brand-yellow/60 text-[10px] uppercase tracking-wider mt-1">
+                            Comodín{item.cost !== undefined && <span className="text-white/40 normal-case"> · Costo {formatCRC(item.cost)}</span>}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-brand-yellow font-mono text-sm font-bold">{formatCRC(item.price)}</span>
+                        {item.isExpense ? (
+                          <span className="text-red-400 font-mono text-sm font-bold">-{formatCRC(item.cost || 0)}</span>
+                        ) : (
+                          <span className="text-brand-yellow font-mono text-sm font-bold">{formatCRC(item.price)}</span>
+                        )}
                         <button onClick={() => removeCustomItem(item.id)} className="text-red-400 hover:text-red-300 text-lg font-bold bg-white/5 w-8 h-8 rounded-full flex items-center justify-center transition-colors">&times;</button>
                       </div>
                     </div>
@@ -656,7 +727,7 @@ export default function SalesAdmin() {
                 </div>
 
                 {/* Descuentos POS */}
-                {!isCartEmpty && (
+                {!isCartEmpty && !isExpenseMode && (
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
                     <p className="text-white/60 uppercase text-[10px] font-bold tracking-widest mb-3">Aplicar Descuento</p>
                     <div className="flex gap-2 mb-3">
@@ -725,10 +796,17 @@ export default function SalesAdmin() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-end mb-6 bg-brand-yellow/5 p-4 rounded-xl border border-brand-yellow/10">
-                    <span className="text-brand-yellow uppercase text-xs font-black tracking-widest">Total a Cobrar</span>
-                    <span className="text-4xl font-black text-brand-yellow">{formatCRC(finalTotal)}</span>
-                  </div>
+                  {isExpenseMode ? (
+                    <div className="flex justify-between items-end mb-6 bg-red-500/5 p-4 rounded-xl border border-red-500/20">
+                      <span className="text-red-400 uppercase text-xs font-black tracking-widest">Total Gasto</span>
+                      <span className="text-4xl font-black text-red-400">{formatCRC(expenseTotal)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-end mb-6 bg-brand-yellow/5 p-4 rounded-xl border border-brand-yellow/10">
+                      <span className="text-brand-yellow uppercase text-xs font-black tracking-widest">Total a Cobrar</span>
+                      <span className="text-4xl font-black text-brand-yellow">{formatCRC(finalTotal)}</span>
+                    </div>
+                  )}
 
                   <p className="text-white/60 uppercase text-[10px] font-bold tracking-widest mb-3">Método de Pago</p>
                   <div className="grid grid-cols-3 gap-2 mb-6">
@@ -755,7 +833,7 @@ export default function SalesAdmin() {
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-1 mb-6">
+                  {!isExpenseMode && <div className="flex flex-col gap-1 mb-6">
                     <label className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Correo del comprador (Opcional)</label>
                     <input 
                       type="email" 
@@ -764,10 +842,10 @@ export default function SalesAdmin() {
                       onChange={e => setBuyerEmail(e.target.value)} 
                       className="bg-black/40 border border-white/20 rounded-lg p-3 text-white text-sm focus:border-brand-yellow focus:outline-none w-full" 
                     />
-                  </div>
+                  </div>}
 
                   <Button variant="primary" className="w-full py-4 text-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(255,222,0,0.2)]" onClick={processCheckout} disabled={isCartEmpty}>
-                    Facturar Venta
+                    {isExpenseMode ? "Registrar Gasto" : "Facturar Venta"}
                   </Button>
                 </div>
               </div>
@@ -806,13 +884,21 @@ export default function SalesAdmin() {
                     <option value="asc">Ascendente ↑</option>
                   </select>
                 </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Tipo</label>
+                  <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value as "" | "Ventas" | "Gasto"); setPage(0); }} className="bg-black/40 border border-white/20 rounded p-2 text-white text-sm">
+                    <option value="">Todos</option>
+                    <option value="Ventas">Solo Ventas</option>
+                    <option value="Gasto">Solo Gastos</option>
+                  </select>
+                </div>
                 <div className="flex items-end ml-auto">
-                  <Button variant="ghost" size="sm" onClick={() => { setStartDate(""); setEndDate(""); setSortBy("sale_date"); setOrder("desc"); }}>Limpiar Filtros</Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setStartDate(""); setEndDate(""); setSortBy("sale_date"); setOrder("desc"); setTypeFilter(""); }}>Limpiar Filtros</Button>
                 </div>
               </div>
 
               {/* Dashboard */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                 <div className="bg-black/20 border border-white/10 rounded-lg p-4">
                   <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Total Ventas</p>
                   <p className="text-2xl font-black text-brand-yellow">{formatCRC(salesStats.total_ventas)}</p>
@@ -820,6 +906,10 @@ export default function SalesAdmin() {
                 <div className="bg-black/20 border border-white/10 rounded-lg p-4">
                   <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Total Costo</p>
                   <p className="text-2xl font-black text-white">{formatCRC(salesStats.total_costo)}</p>
+                </div>
+                <div className="bg-black/20 border border-red-500/30 rounded-lg p-4">
+                  <p className="text-red-400/60 text-[10px] uppercase tracking-widest font-bold">Total Gastos</p>
+                  <p className="text-2xl font-black text-red-400">{formatCRC(salesStats.total_gastos || 0)}</p>
                 </div>
                 <div className="bg-black/20 border border-green-500/30 rounded-lg p-4">
                   <p className="text-green-400/60 text-[10px] uppercase tracking-widest font-bold">Ganancia</p>
@@ -856,7 +946,7 @@ export default function SalesAdmin() {
                         </td>
                         <td className="py-4 text-white">{new Date(sale.sale_date).toLocaleString('es-CR')}</td>
                         <td className="py-4">
-                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.sale_type === 'POS' ? 'bg-blue-500/20 text-blue-400' : sale.sale_type === 'Torneo' ? 'bg-purple-500/20 text-purple-400' : 'bg-brand-yellow/20 text-brand-yellow'}`}>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${sale.sale_type === 'POS' ? 'bg-blue-500/20 text-blue-400' : sale.sale_type === 'Gasto' ? 'bg-red-500/20 text-red-400' : sale.sale_type === 'Torneo' ? 'bg-purple-500/20 text-purple-400' : 'bg-brand-yellow/20 text-brand-yellow'}`}>
                             {sale.sale_type}
                           </span>
                         </td>
@@ -875,7 +965,9 @@ export default function SalesAdmin() {
                         </td>
                         <td className="py-4 text-white/60">{sale.payment_method}</td>
                         <td className="py-4 text-brand-yellow font-black text-right">
-                          {sale.discount_amount && sale.discount_amount > 0 ? (
+                          {sale.sale_type === 'Gasto' ? (
+                            <span className="text-red-400">-{formatCRC(saleExpenseTotal(sale))}</span>
+                          ) : sale.discount_amount && sale.discount_amount > 0 ? (
                             <div className="flex flex-col items-end">
                               <span className="text-white/40 text-[10px] line-through font-normal font-mono">
                                 {formatCRC(sale.original_total || sale.total_amount + sale.discount_amount)}
