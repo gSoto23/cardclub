@@ -97,6 +97,20 @@ try:
 except Exception as e:
     print("original_total migration skipped:", e)
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE sale_items ADD COLUMN notes TEXT;"))
+        print("notes column added to sale_items.")
+except Exception as e:
+    print("notes migration skipped:", e)
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE sale_items ADD COLUMN unit_cost FLOAT;"))
+        print("unit_cost column added to sale_items.")
+except Exception as e:
+    print("unit_cost migration skipped:", e)
+
 # Crear tablas en la base de datos (En producción usaríamos Alembic)
 models.Base.metadata.create_all(bind=engine)
 
@@ -956,6 +970,16 @@ def get_global_ranking(championship_id: Optional[int] = None, db: Session = Depe
 
 @app.post("/api/sales", response_model=schemas.Sale, tags=["Sales"])
 def create_sale(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    # Validar productos comodín (nombre y precio libres definidos por el vendedor)
+    for item in sale.items:
+        if item.reference_type == "Comodin":
+            if not item.description or not item.description.strip():
+                raise HTTPException(status_code=400, detail="El producto comodín requiere un nombre")
+            if item.price <= 0 or item.quantity <= 0:
+                raise HTTPException(status_code=400, detail="El producto comodín requiere precio y cantidad mayores a 0")
+            if item.unit_cost is not None and item.unit_cost < 0:
+                raise HTTPException(status_code=400, detail="El costo del producto comodín no puede ser negativo")
+
     db_sale = models.Sale(
         user_id=sale.user_id,
         total_amount=sale.total_amount,
@@ -977,7 +1001,9 @@ def create_sale(sale: schemas.SaleCreate, background_tasks: BackgroundTasks, db:
             price=item.price,
             quantity=item.quantity,
             reference_type=item.reference_type,
-            reference_id=item.reference_id
+            reference_id=item.reference_id,
+            notes=item.notes.strip() if item.notes and item.notes.strip() else None,
+            unit_cost=item.unit_cost if item.reference_type == "Comodin" else None
         )
         db.add(db_item)
         
@@ -1195,6 +1221,8 @@ def get_sales_stats(
                 product = db.query(models.Product).filter(models.Product.id == item.reference_id).first()
                 if product:
                     total_costo += (product.purchase_price * item.quantity)
+            elif item.reference_type == "Comodin" and item.unit_cost:
+                total_costo += (item.unit_cost * item.quantity)
                     
     ganancia = total_ventas - total_costo
     

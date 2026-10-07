@@ -191,8 +191,10 @@ class SaleItem(Base):
     description = Column(String)
     price = Column(Float)
     quantity = Column(Integer, default=1)
-    reference_type = Column(String, nullable=True) # "Producto", "Torneo", "Subasta"
+    reference_type = Column(String, nullable=True) # "Producto", "Torneo", "Subasta", "Comodin"
     reference_id = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True) # Descripción opcional (ej. producto comodín en POS)
+    unit_cost = Column(Float, nullable=True) # Costo unitario (ej. producto comodín en POS)
 
     sale = relationship("Sale", back_populates="items")
 

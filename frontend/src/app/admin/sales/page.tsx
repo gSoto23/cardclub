@@ -20,6 +20,16 @@ interface SaleItem {
   price: number;
   quantity: number;
   reference_type: string;
+  notes?: string;
+  unit_cost?: number;
+}
+
+interface CustomItem {
+  id: string;
+  name: string;
+  price: number;
+  cost?: number;
+  description?: string;
 }
 
 interface Sale {
@@ -61,6 +71,12 @@ export default function SalesAdmin() {
   const [buyerEmail, setBuyerEmail] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountValue, setDiscountValue] = useState<number>(0);
+  const [customItems, setCustomItems] = useState<CustomItem[]>([]);
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+  const [customCost, setCustomCost] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
 
   // History State
   const [sales, setSales] = useState<Sale[]>([]);
@@ -264,10 +280,49 @@ export default function SalesAdmin() {
     setCart(cart.filter(item => item.product.id !== productId));
   };
 
+  const resetCustomForm = () => {
+    setCustomName("");
+    setCustomPrice("");
+    setCustomCost("");
+    setCustomDescription("");
+    setShowCustomForm(false);
+  };
+
+  const addCustomItem = () => {
+    const name = customName.trim();
+    const price = parseFloat(customPrice);
+    if (!name) {
+      toast.error("Ingresá el nombre del producto.");
+      return;
+    }
+    if (!price || price <= 0) {
+      toast.error("Ingresá un precio mayor a 0.");
+      return;
+    }
+    const cost = customCost.trim() === "" ? undefined : parseFloat(customCost);
+    if (cost !== undefined && (isNaN(cost) || cost < 0)) {
+      toast.error("El costo no puede ser negativo.");
+      return;
+    }
+    setCustomItems([...customItems, {
+      id: `${Date.now()}-${Math.random()}`,
+      name,
+      price,
+      cost,
+      description: customDescription.trim() || undefined
+    }]);
+    resetCustomForm();
+  };
+
+  const removeCustomItem = (id: string) => {
+    setCustomItems(customItems.filter(item => item.id !== id));
+  };
+
   const processCheckout = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 && customItems.length === 0) return;
     
-    const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+    const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0)
+      + customItems.reduce((acc, item) => acc + item.price, 0);
     const discountAmount = discountType === "percentage" 
       ? Math.round(cartTotal * (discountValue / 100)) 
       : discountValue;
@@ -281,13 +336,23 @@ export default function SalesAdmin() {
       payment_method: paymentMethod,
       sale_type: "POS",
       buyer_email: buyerEmail.trim() || undefined,
-      items: cart.map(item => ({
-        description: item.product.expansion_set ? `${item.product.name} (${item.product.expansion_set})` : item.product.name,
-        price: item.product.price,
-        quantity: item.quantity,
-        reference_type: "Producto",
-        reference_id: item.product.id
-      }))
+      items: [
+        ...cart.map(item => ({
+          description: item.product.expansion_set ? `${item.product.name} (${item.product.expansion_set})` : item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+          reference_type: "Producto",
+          reference_id: item.product.id
+        })),
+        ...customItems.map(item => ({
+          description: item.name,
+          price: item.price,
+          quantity: 1,
+          reference_type: "Comodin",
+          notes: item.description,
+          unit_cost: item.cost
+        }))
+      ]
     };
 
     try {
@@ -303,6 +368,8 @@ export default function SalesAdmin() {
       if (res.ok) {
         toast.success("Venta registrada exitosamente");
         setCart([]);
+        setCustomItems([]);
+        resetCustomForm();
         setBuyerEmail("");
         setDiscountValue(0);
         fetchProducts(); // Refresh stock
@@ -321,7 +388,9 @@ export default function SalesAdmin() {
 
   if (loading) return <div className="p-8 text-white">Cargando módulo de ventas...</div>;
 
-  const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+  const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0)
+    + customItems.reduce((acc, item) => acc + item.price, 0);
+  const isCartEmpty = cart.length === 0 && customItems.length === 0;
   const discountAmount = discountType === "percentage" 
     ? Math.round(cartTotal * (discountValue / 100)) 
     : discountValue;
@@ -475,7 +544,72 @@ export default function SalesAdmin() {
             {/* Derecha: Carrito y Checkout */}
             <div className="xl:w-1/3">
               <div className="bg-black/40 border border-brand-yellow/30 rounded-xl p-6 shadow-[0_0_20px_rgba(255,222,0,0.1)] flex flex-col sticky top-24 min-h-[60vh]">
-                <h3 className="text-white font-black italic uppercase text-xl mb-4">Orden Actual</h3>
+                <div className="flex justify-between items-center mb-4 gap-2">
+                  <h3 className="text-white font-black italic uppercase text-xl">Orden Actual</h3>
+                  {!showCustomForm && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomForm(true)}
+                      className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded border border-brand-yellow/40 text-brand-yellow hover:bg-brand-yellow/10 transition-colors whitespace-nowrap"
+                    >
+                      + Comodín
+                    </button>
+                  )}
+                </div>
+
+                {/* Formulario producto comodín */}
+                {showCustomForm && (
+                  <div className="bg-white/5 border border-brand-yellow/30 rounded-xl p-4 mb-4 space-y-3">
+                    <p className="text-brand-yellow uppercase text-[10px] font-bold tracking-widest">Producto Comodín</p>
+                    <input
+                      type="text"
+                      placeholder="Nombre *"
+                      value={customName}
+                      onChange={e => setCustomName(e.target.value)}
+                      autoFocus
+                      className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-full"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Precio (₡) *"
+                      value={customPrice}
+                      onChange={e => setCustomPrice(e.target.value)}
+                      className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-full"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Costo (₡) (opcional)"
+                      value={customCost}
+                      onChange={e => setCustomCost(e.target.value)}
+                      className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-full"
+                    />
+                    <textarea
+                      placeholder="Descripción (opcional)"
+                      value={customDescription}
+                      onChange={e => setCustomDescription(e.target.value)}
+                      rows={2}
+                      className="bg-black/40 border border-white/20 rounded-lg p-2 text-white text-sm focus:border-brand-yellow outline-none w-full resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={resetCustomForm}
+                        className="flex-1 py-2 text-xs font-bold uppercase rounded border border-white/10 text-white/60 hover:text-white transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addCustomItem}
+                        className="flex-1 py-2 text-xs font-bold uppercase rounded bg-brand-yellow text-black hover:opacity-90 transition-opacity"
+                      >
+                        Agregar
+                      </button>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Lista del carrito */}
                 <div className="flex-grow space-y-3 mb-6 overflow-y-auto pr-2">
@@ -494,7 +628,24 @@ export default function SalesAdmin() {
                       </div>
                     </div>
                   ))}
-                  {cart.length === 0 && (
+                  {customItems.map(item => (
+                    <div key={item.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-brand-yellow/20">
+                      <div className="flex flex-col min-w-0 flex-1 pr-2">
+                        <span className="text-white text-sm font-bold truncate" title={item.name}>{item.name}</span>
+                        {item.description && (
+                          <span className="text-[10px] text-white/40 truncate mt-0.5" title={item.description}>{item.description}</span>
+                        )}
+                        <span className="text-brand-yellow/60 text-[10px] uppercase tracking-wider mt-1">
+                          Comodín{item.cost !== undefined && <span className="text-white/40 normal-case"> · Costo {formatCRC(item.cost)}</span>}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-brand-yellow font-mono text-sm font-bold">{formatCRC(item.price)}</span>
+                        <button onClick={() => removeCustomItem(item.id)} className="text-red-400 hover:text-red-300 text-lg font-bold bg-white/5 w-8 h-8 rounded-full flex items-center justify-center transition-colors">&times;</button>
+                      </div>
+                    </div>
+                  ))}
+                  {isCartEmpty && !showCustomForm && (
                     <div className="flex flex-col items-center justify-center h-full text-white/20 py-12">
                       <svg className="w-16 h-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -505,7 +656,7 @@ export default function SalesAdmin() {
                 </div>
 
                 {/* Descuentos POS */}
-                {cart.length > 0 && (
+                {!isCartEmpty && (
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
                     <p className="text-white/60 uppercase text-[10px] font-bold tracking-widest mb-3">Aplicar Descuento</p>
                     <div className="flex gap-2 mb-3">
@@ -615,7 +766,7 @@ export default function SalesAdmin() {
                     />
                   </div>
 
-                  <Button variant="primary" className="w-full py-4 text-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(255,222,0,0.2)]" onClick={processCheckout} disabled={cart.length === 0}>
+                  <Button variant="primary" className="w-full py-4 text-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(255,222,0,0.2)]" onClick={processCheckout} disabled={isCartEmpty}>
                     Facturar Venta
                   </Button>
                 </div>
@@ -711,8 +862,9 @@ export default function SalesAdmin() {
                         </td>
                         <td className="py-4 text-white/80 text-xs">
                           {sale.items.map(item => (
-                            <div key={item.id} className="truncate max-w-[150px]" title={item.description}>
+                            <div key={item.id} className="truncate max-w-[150px]" title={item.notes ? `${item.description} — ${item.notes}` : item.description}>
                               {item.quantity}x {item.description}
+                              {item.notes && <span className="block text-[10px] text-white/40 truncate">{item.notes}</span>}
                             </div>
                           ))}
                         </td>

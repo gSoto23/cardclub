@@ -259,6 +259,8 @@ class SaleItemBase(BaseModel):
     quantity: int = 1
     reference_type: Optional[str] = None
     reference_id: Optional[int] = None
+    notes: Optional[str] = None
+    unit_cost: Optional[float] = None
 
 class SaleItemCreate(SaleItemBase):
     pass
