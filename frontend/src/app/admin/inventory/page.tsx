@@ -102,6 +102,16 @@ export default function InventoryAdmin() {
     is_auction_only: false, is_pos_only: false
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // Bulk Edit State ("" = sin cambio)
+  const emptyBulk = {
+    category_id: "", game: "", expansion_set: "", condition: "",
+    priceMode: "" as "" | "set" | "percent", priceValue: "",
+    purchase_price: "", stock: "", visibility: "", is_foil: ""
+  };
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showBulkForm, setShowBulkForm] = useState(false);
+  const [bulkData, setBulkData] = useState(emptyBulk);
   
   // Category State
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -248,6 +258,86 @@ export default function InventoryAdmin() {
     });
     setEditingProductId(product.id);
     setShowForm(true);
+  };
+
+  const toggleSelected = (productId: number) => {
+    setSelectedIds(prev => prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]);
+  };
+
+  const visibleIds = filteredAndSortedProducts.map(p => p.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.includes(id));
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(prev => prev.filter(id => !visibleIds.includes(id)));
+    } else {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
+  const clearBulk = () => {
+    setSelectedIds([]);
+    setBulkData(emptyBulk);
+    setShowBulkForm(false);
+  };
+
+  const handleBulkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedIds.length === 0) return;
+
+    const changes: Record<string, string | number | boolean> = {};
+    if (bulkData.category_id) changes.category_id = parseInt(bulkData.category_id);
+    if (bulkData.game.trim()) changes.game = bulkData.game.trim();
+    if (bulkData.expansion_set.trim()) changes.expansion_set = bulkData.expansion_set.trim();
+    if (bulkData.condition) changes.condition = bulkData.condition;
+    if (bulkData.purchase_price !== "") changes.purchase_price = parseFloat(bulkData.purchase_price);
+    if (bulkData.stock !== "") changes.stock = parseInt(bulkData.stock);
+    if (bulkData.is_foil) changes.is_foil = bulkData.is_foil === "yes";
+    if (bulkData.visibility) {
+      changes.is_pos_only = bulkData.visibility === "pos";
+      changes.is_auction_only = bulkData.visibility === "auction";
+    }
+
+    let priceAdjustPercent: number | undefined;
+    if (bulkData.priceMode && bulkData.priceValue !== "") {
+      const value = parseFloat(bulkData.priceValue);
+      if (isNaN(value)) {
+        toast.error("Valor de precio inválido.");
+        return;
+      }
+      if (bulkData.priceMode === "set") changes.price = value;
+      else priceAdjustPercent = value;
+    }
+
+    if (Object.keys(changes).length === 0 && priceAdjustPercent === undefined) {
+      toast.error("No hay cambios para aplicar.");
+      return;
+    }
+    if (!confirm(`¿Aplicar estos cambios a ${selectedIds.length} producto(s)?`)) return;
+
+    const toastId = toast.loading("Actualizando productos...");
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/bulk`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`
+        },
+        body: JSON.stringify({ ids: selectedIds, changes, price_adjust_percent: priceAdjustPercent })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`${data.updated} producto(s) actualizado(s)`, { id: toastId });
+        clearBulk();
+        fetchData();
+      } else {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.detail || "Error al actualizar productos", { id: toastId });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error de conexión", { id: toastId });
+    }
   };
 
   const handleDelete = async (productId: number) => {
@@ -471,11 +561,105 @@ export default function InventoryAdmin() {
           )}
         </div>
 
+        {/* Barra de edición masiva */}
+        {selectedIds.length > 0 && (
+          <div className="bg-brand-yellow/5 border border-brand-yellow/30 rounded-xl p-4 mb-4">
+            <div className="flex flex-wrap justify-between items-center gap-3">
+              <span className="text-brand-yellow font-bold text-sm">{selectedIds.length} producto(s) seleccionado(s)</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={clearBulk}>Deseleccionar</Button>
+                <Button variant="primary" size="sm" onClick={() => setShowBulkForm(!showBulkForm)}>
+                  {showBulkForm ? "Ocultar" : "Editar en bloque"}
+                </Button>
+              </div>
+            </div>
+
+            {showBulkForm && (
+              <form onSubmit={handleBulkSubmit} className="mt-4 pt-4 border-t border-white/10">
+                <p className="text-white/40 text-xs mb-4">Solo se modifican los campos que llenes. Los vacíos quedan igual.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Categoría</label>
+                    <select value={bulkData.category_id} onChange={e => setBulkData({...bulkData, category_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white">
+                      <option value="">— Sin cambio —</option>
+                      {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Juego</label>
+                    <input type="text" placeholder="— Sin cambio —" value={bulkData.game} onChange={e => setBulkData({...bulkData, game: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Set de Expansión</label>
+                    <input type="text" placeholder="— Sin cambio —" value={bulkData.expansion_set} onChange={e => setBulkData({...bulkData, expansion_set: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Condición</label>
+                    <select value={bulkData.condition} onChange={e => setBulkData({...bulkData, condition: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white">
+                      <option value="">— Sin cambio —</option>
+                      <option value="Sealed">Sealed (Sellado)</option>
+                      <option value="NM">Near Mint (NM)</option>
+                      <option value="LP">Lightly Played (LP)</option>
+                      <option value="MP">Moderately Played (MP)</option>
+                      <option value="HP">Heavily Played (HP)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Precio de Venta</label>
+                    <div className="flex gap-2">
+                      <select value={bulkData.priceMode} onChange={e => setBulkData({...bulkData, priceMode: e.target.value as "" | "set" | "percent", priceValue: ""})} className="bg-black/40 border border-white/10 rounded p-2 text-white">
+                        <option value="">— Sin cambio —</option>
+                        <option value="set">Fijar ₡</option>
+                        <option value="percent">Ajustar %</option>
+                      </select>
+                      {bulkData.priceMode && (
+                        <input type="number" step="any" min={bulkData.priceMode === "set" ? 0 : undefined} placeholder={bulkData.priceMode === "set" ? "Ej. 5000" : "Ej. 10 o -15"} value={bulkData.priceValue} onChange={e => setBulkData({...bulkData, priceValue: e.target.value})} className="w-full min-w-0 bg-black/40 border border-white/10 rounded p-2 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Precio de Compra (CRC)</label>
+                    <input type="number" min="0" placeholder="— Sin cambio —" value={bulkData.purchase_price} onChange={e => setBulkData({...bulkData, purchase_price: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Stock</label>
+                    <input type="number" min="0" placeholder="— Sin cambio —" value={bulkData.stock} onChange={e => setBulkData({...bulkData, stock: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Visibilidad</label>
+                    <select value={bulkData.visibility} onChange={e => setBulkData({...bulkData, visibility: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white">
+                      <option value="">— Sin cambio —</option>
+                      <option value="all">Tienda web + POS</option>
+                      <option value="pos">Solo POS (Tienda Física)</option>
+                      <option value="auction">Solo Subastas</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-white/60 font-bold uppercase">Foil / Holográfica</label>
+                    <select value={bulkData.is_foil} onChange={e => setBulkData({...bulkData, is_foil: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded p-2 text-white">
+                      <option value="">— Sin cambio —</option>
+                      <option value="yes">Sí</option>
+                      <option value="no">No</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button type="button" variant="ghost" onClick={() => setBulkData(emptyBulk)}>Limpiar campos</Button>
+                  <Button type="submit" variant="primary">Aplicar a {selectedIds.length} producto(s)</Button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
         {/* Tabla de Productos */}
         <div className="bg-white/5 border border-white/10 rounded-xl overflow-x-auto">
           <table className="w-full text-left text-white min-w-[900px]">
             <thead className="bg-black/40 text-xs uppercase tracking-widest text-white/60 border-b border-white/10">
               <tr>
+                <th className="p-4 w-10">
+                  <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} className="w-4 h-4 cursor-pointer" title="Seleccionar todos los visibles" />
+                </th>
                 <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort("id")}>
                   <div className="flex items-center gap-1">
                     ID {sortKey === "id" && (sortDirection === "asc" ? "▲" : "▼")}
@@ -520,7 +704,10 @@ export default function InventoryAdmin() {
                 const marginPercent = p.purchase_price > 0 ? (marginAmount / p.purchase_price) * 100 : 100;
                 
                 return (
-                  <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <tr key={p.id} className={`border-b border-white/5 hover:bg-white/5 transition-colors ${selectedIds.includes(p.id) ? "bg-brand-yellow/5" : ""}`}>
+                    <td className="p-4">
+                      <input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggleSelected(p.id)} className="w-4 h-4 cursor-pointer" />
+                    </td>
                     <td className="p-4 font-mono text-white/40">#{p.id}</td>
                     <td className="p-4 font-bold">
                       {p.name}
@@ -553,7 +740,7 @@ export default function InventoryAdmin() {
               })}
               {filteredAndSortedProducts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-white/40">No hay productos en el inventario.</td>
+                  <td colSpan={9} className="p-8 text-center text-white/40">No hay productos en el inventario.</td>
                 </tr>
               )}
             </tbody>

@@ -79,14 +79,14 @@ export const TiendaContent = ({ products }: TiendaContentProps) => {
       return true;
     });
 
-    // Ordenar: Productos con stock > 0 primero, agotados al final
-    return filtered.sort((a, b) => {
+    // Ordenar: Productos con stock > 0 primero, agotados al final; dentro de cada grupo, los más nuevos primero
+    return [...filtered].sort((a, b) => {
       const stockA = a.stock || 0;
       const stockB = b.stock || 0;
       
       if (stockA > 0 && stockB <= 0) return -1;
       if (stockA <= 0 && stockB > 0) return 1;
-      return 0;
+      return b.id - a.id;
     });
   }, [products, searchTerm, selectedGame, selectedCategory, selectedSet]);
 

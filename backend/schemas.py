@@ -100,6 +100,11 @@ class ProductUpdate(BaseModel):
     is_pos_only: Optional[bool] = None
     category_id: Optional[int] = None
 
+class ProductBulkUpdate(BaseModel):
+    ids: List[int]
+    changes: ProductUpdate = ProductUpdate()
+    price_adjust_percent: Optional[float] = None # Ajuste relativo del precio de venta (ej. 10 = +10%, -15 = -15%)
+
 class Product(ProductBase):
     id: int
     category_id: int

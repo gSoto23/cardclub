@@ -445,7 +445,8 @@ def read_products(skip: int = 0, limit: int = 10000, visibility: Optional[str] =
         query = query.filter(models.Product.is_auction_only == False)
     
     try:
-        return query.offset(skip).limit(limit).all()
+        # Más nuevos primero
+        return query.order_by(models.Product.id.desc()).offset(skip).limit(limit).all()
     except Exception as e:
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
@@ -457,6 +458,35 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(db_product)
     return db_product
+
+@app.patch("/api/products/bulk", tags=["Products"])
+def bulk_update_products(bulk: schemas.ProductBulkUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
+    if not bulk.ids:
+        raise HTTPException(status_code=400, detail="No se seleccionaron productos")
+
+    update_data = bulk.changes.dict(exclude_unset=True, exclude_none=True)
+    if not update_data and bulk.price_adjust_percent is None:
+        raise HTTPException(status_code=400, detail="No hay cambios para aplicar")
+    if "price" in update_data and bulk.price_adjust_percent is not None:
+        raise HTTPException(status_code=400, detail="No se puede fijar y ajustar el precio a la vez")
+    for field in ("price", "purchase_price", "stock"):
+        if field in update_data and update_data[field] < 0:
+            raise HTTPException(status_code=400, detail=f"El valor de {field} no puede ser negativo")
+    if bulk.price_adjust_percent is not None and bulk.price_adjust_percent <= -100:
+        raise HTTPException(status_code=400, detail="El ajuste de precio debe ser mayor a -100%")
+    if "category_id" in update_data:
+        if not db.query(models.Category).filter(models.Category.id == update_data["category_id"]).first():
+            raise HTTPException(status_code=400, detail="Categoría no encontrada")
+
+    products = db.query(models.Product).filter(models.Product.id.in_(bulk.ids)).all()
+    for product in products:
+        for key, value in update_data.items():
+            setattr(product, key, value)
+        if bulk.price_adjust_percent is not None:
+            product.price = round((product.price or 0) * (1 + bulk.price_adjust_percent / 100))
+
+    db.commit()
+    return {"status": "ok", "updated": len(products)}
 
 @app.put("/api/products/{product_id}", response_model=schemas.Product, tags=["Products"])
 def update_product(product_id: int, product_update: schemas.ProductUpdate, db: Session = Depends(get_db), current_admin: models.User = Depends(auth.get_current_admin_user)):
